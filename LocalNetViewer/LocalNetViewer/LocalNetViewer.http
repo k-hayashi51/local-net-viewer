@@ -1,0 +1,6 @@
+@LocalNetViewer_HostAddress = http://localhost:5197
+
+GET {{LocalNetViewer_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

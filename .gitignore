@@ -1,0 +1,15 @@
+# .NET ビルド出力
+bin/
+obj/
+
+# Node.js / Vue
+node_modules/
+
+# ビルド生成物や公開フォルダ
+wwwroot/
+
+# VS Code や IDE 関連
+.vscode/
+.vs/
+*.user
+*.suo
