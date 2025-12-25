@@ -14,12 +14,12 @@
       <div v-else class="icon-placeholder">
         {{ typeIcon }}
       </div>
-    </div>
-    <div class="content">
-      <h3 class="title">{{ item.name }}</h3>
       <div class="type-badge">
         {{ typeBadge }}
       </div>
+    </div>
+    <div class="content">
+      <h3 class="title">{{ item.name }}</h3>
     </div>
   </div>
 </template>
@@ -64,96 +64,114 @@ const typeBadge = computed(() => {
 <style scoped>
 .item-card {
   display: flex;
-  align-items: center;
-  gap: 1rem;
+  flex-direction: column;
   background: var(--bg-card);
-  border-radius: 8px;
-  padding: 0.75rem;
+  border-radius: 12px;
+  overflow: hidden;
   cursor: pointer;
-  transition: all 0.2s;
-  border: 1px solid transparent;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .item-card:hover {
   border-color: var(--accent);
-  background: var(--bg-secondary);
-  transform: translateX(4px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
 }
 
 .thumbnail {
-  flex-shrink: 0;
-  width: 64px;
-  height: 64px;
-  border-radius: 6px;
-  overflow: hidden;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
   background: var(--bg-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
 }
 
 .thumbnail img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.item-card:hover .thumbnail img {
+  transform: scale(1.05);
 }
 
 .icon-placeholder {
-  font-size: 2rem;
-}
-
-.content {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.title {
-  flex: 1;
-  font-size: 1rem;
-  font-weight: 500;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--text-primary);
+  font-size: 4rem;
+  opacity: 0.7;
 }
 
 .type-badge {
-  flex-shrink: 0;
-  background: rgba(0, 0, 0, 0.5);
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  background: rgba(0, 0, 0, 0.7);
   backdrop-filter: blur(8px);
-  padding: 0.25rem 0.75rem;
-  border-radius: 12px;
+  padding: 0.375rem 0.75rem;
+  border-radius: 20px;
   font-size: 0.75rem;
-  color: var(--text-secondary);
-  font-weight: 500;
+  color: white;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.content {
+  padding: 1rem;
+  background: var(--bg-card);
+}
+
+.title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.4;
+  min-height: 2.8em;
+  margin: 0;
 }
 
 @media (max-width: 768px) {
-  .item-card {
-    padding: 0.625rem;
-    gap: 0.75rem;
-  }
-
-  .thumbnail {
-    width: 48px;
-    height: 48px;
-  }
-
   .icon-placeholder {
-    font-size: 1.5rem;
+    font-size: 3rem;
+  }
+
+  .type-badge {
+    top: 0.5rem;
+    right: 0.5rem;
+    padding: 0.25rem 0.625rem;
+    font-size: 0.7rem;
+  }
+
+  .content {
+    padding: 0.75rem;
   }
 
   .title {
     font-size: 0.875rem;
   }
+}
+
+@media (max-width: 480px) {
+  .icon-placeholder {
+    font-size: 2.5rem;
+  }
 
   .type-badge {
-    font-size: 0.7rem;
-    padding: 0.2rem 0.5rem;
+    font-size: 0.65rem;
+    padding: 0.25rem 0.5rem;
   }
 }
 </style>

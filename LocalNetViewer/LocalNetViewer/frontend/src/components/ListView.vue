@@ -33,7 +33,7 @@
       <div class="spinner"></div>
     </div>
 
-    <div class="list-container" v-else>
+    <div class="grid-container" v-else>
       <ItemCard
         v-for="item in files"
         :key="item.position"
@@ -89,7 +89,6 @@ const updateFilesAsync = async () => {
     const response = await fetch(`/api/files/${position}/child`)
     files.value = await response.json()
     
-    // パンくずリストの取得
     await updateBreadcrumbs(position)
 
     await fetch('/api/settings/position', {
@@ -109,17 +108,12 @@ const updateFilesAsync = async () => {
 
 const updateBreadcrumbs = async (position: string) => {
   try {
-    // position からフルパスを取得
     const response = await fetch(`/api/files/${position}/path`);
     const fullPath = await response.text();
 
-    // ディレクトリ名配列
     const dirNames = fullPath.split(/[\\/]/);
-
-    // パンくず用 position 分解
     const positionIds = position.split('-');
 
-    // パンくずリスト生成
     breadcrumbs.value = [{name: 'Top', position: ''}, ...positionIds
       .map((_, index): Breadcrumb => ({
         name: dirNames[index],
@@ -255,12 +249,12 @@ h1 {
   to { transform: rotate(360deg); }
 }
 
-.list-container {
+.grid-container {
   max-width: 1400px;
   margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1.5rem;
 }
 
 .empty {
@@ -268,6 +262,13 @@ h1 {
   padding: 4rem 2rem;
   color: var(--text-tertiary);
   font-size: 1.125rem;
+}
+
+@media (max-width: 1024px) {
+  .grid-container {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 1.25rem;
+  }
 }
 
 @media (max-width: 768px) {
@@ -292,6 +293,11 @@ h1 {
     padding: 0.375rem 0.75rem;
     font-size: 0.875rem;
     max-width: 120px;
+  }
+
+  .grid-container {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 1rem;
   }
 }
 
