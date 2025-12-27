@@ -18,6 +18,10 @@
     <!-- Breadcrumb -->
     <nav class="breadcrumb">
       <button
+        @click="navigateToAsync('')"
+        class="breadcrumb-item"
+        :class="{ 'active': breadcrumbs.length === 0 }">Top</button>
+      <button
         v-for="(crumb, index) in breadcrumbs"
         :key="crumb.position"
         @click="navigateToAsync(crumb.position)"
@@ -55,6 +59,7 @@ import ItemCard from './ItemCard.vue'
 import { Disclosure, DisclosureButton, DisclosurePanel } from '@headlessui/vue'
 import QrcodeVue from "qrcode.vue";
 import { FileType, type FileInfoViewModel } from '../types'
+import { getPosition, setPosition } from '../services/LocalStorageService';
 
 interface Breadcrumb {
   name: string
@@ -69,41 +74,49 @@ const router = useRouter()
 const files = ref<FileInfoViewModel[]>([])
 const loading = ref(false)
 const url = ref('')
-const breadcrumbs = ref<Breadcrumb[]>([{name: 'Top', position: ''}])
+const breadcrumbs = ref<Breadcrumb[]>([])
 
 onMounted(async () => {
+  // 接続用URLを取得する。
   url.value = await (await fetch(`/api/network/url`)).text()
+  // 表示ファイルを更新する。
   await updateFilesAsync()
 })
 
-watch(() => props.position, () => updateFilesAsync())
+watch(() => props.position, async () => await updateFilesAsync())
 
+/**
+ * 表示ファイルを更新する。
+ */
 const updateFilesAsync = async () => {
-  let position = props.position
-  if (!props.position) {
-    const positionRes = await fetch(`/api/settings/position`)
-    position = await positionRes.text()
-  }
-  
-  if (position) {
-    const response = await fetch(`/api/files/${position}/child`)
+  // URLに指定のディレクトリ位置が存在する場合、ファイルリストを取得する。
+  if (props.position) {
+    let response = new Response();
+    try {
+      // 指定したディレクトリ位置に表示されている子ディレクトリ情報を取得する。
+      response = await fetch(`/api/files/${props.position}/child`)
+    } catch {
+      // 子ディレクトリ情報の取得に失敗した場合、トップに戻す。
+      navigateToAsync('');
+      return;
+    }
     files.value = await response.json()
-    
-    await updateBreadcrumbs(position)
-
-    await fetch('/api/settings/position', {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(position)
-    });
+    await updateBreadcrumbs(props.position) // パンくずリストを更新する。
+    setPosition(props.position); // ローカルセッションに使用したディレクトリ位置を記憶する。
     return
   }
+
+  // URLに指定のディレクトリ位置が存在しない場合、ローカルセッションに登録されているディレクトリ位置を表示させる。
+  const position = getPosition();
+  if (position) {
+    navigateToAsync(position);
+    return;
+  }
   
+  // URLにもローカルセッションにもディレクトリ位置がない場合、トップに戻す。
   const response = await fetch(`/api/files`)
   files.value = await response.json()
-  breadcrumbs.value = [{name: 'Top', position: ''}]
+  breadcrumbs.value = []
 }
 
 const updateBreadcrumbs = async (position: string) => {
@@ -114,15 +127,15 @@ const updateBreadcrumbs = async (position: string) => {
     const dirNames = fullPath.split(/[\\/]/);
     const positionIds = position.split('-');
 
-    breadcrumbs.value = [{name: 'Top', position: ''}, ...positionIds
+    breadcrumbs.value = positionIds
       .map((_, index): Breadcrumb => ({
         name: dirNames[index],
         position: positionIds.slice(0, index + 1).join('-'),
-      }))];
+      }));
 
   } catch (error) {
     console.error('パンくずリストの取得エラー:', error)
-    breadcrumbs.value = [{name: 'Top', position: ''}]
+    breadcrumbs.value = []
   }
 }
 
@@ -130,13 +143,7 @@ const navigateToAsync = async (position: string) => {
   if (position) {
     router.push(`/${position}`)
   } else {
-    await fetch('/api/settings/position', {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify('')
-    });
+    setPosition('');
     router.push('/')
   }
 }

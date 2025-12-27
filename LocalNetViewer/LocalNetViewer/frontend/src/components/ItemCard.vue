@@ -1,19 +1,28 @@
 <template>
   <div class="item-card" @click="emit('click')">
-    <div class="thumbnail">
+    <div 
+      class="thumbnail" 
+      :class="{ 'is-grid': item.fileType !== FileType.Image && item.childImagePositions.length > 0 }"
+    >
       <img
         v-if="props.item.fileType === FileType.Image"
         :src="`/api/files/${item.position}/thumbnail`"
         :alt="item.name"
         loading="lazy" />
-      <img
-        v-else-if="item.childImagePositions.length !== 0"
-        :src="`/api/files/${item.childImagePositions[0]}/thumbnail`"
-        :alt="item.name"
-        loading="lazy" />
+
+      <template v-else-if="item.childImagePositions.length !== 0">
+        <img
+          v-for="pos in item.childImagePositions.slice(0, 4)"
+          :key="pos"
+          :src="`/api/files/${pos}/thumbnail`"
+          :alt="item.name"
+          loading="lazy" />
+      </template>
+
       <div v-else class="icon-placeholder">
         {{ typeIcon }}
       </div>
+
       <div class="type-badge">
         {{ typeBadge }}
       </div>
@@ -37,9 +46,7 @@ const emit = defineEmits<{
 }>()
 
 const typeIcon = computed(() => {
-  if (props.item.isDirectory) {
-    return '📁' 
-  }
+  if (props.item.isDirectory) return '📁' 
   switch (props.item.fileType) {
     case FileType.Image: return '🖼️'
     case FileType.Pdf: return '📄'
@@ -49,9 +56,7 @@ const typeIcon = computed(() => {
 })
 
 const typeBadge = computed(() => {
-  if (props.item.isDirectory) {
-    return 'フォルダ' 
-  }
+  if (props.item.isDirectory) return 'フォルダ' 
   switch (props.item.fileType) {
     case FileType.Image: return '画像'
     case FileType.Pdf: return 'PDF'
@@ -91,15 +96,29 @@ const typeBadge = computed(() => {
   overflow: hidden;
 }
 
+/* グリッドレイアウトの設定 */
+.thumbnail.is-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+}
+
 .thumbnail img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   transition: transform 0.3s ease;
+  display: block;
 }
 
-.item-card:hover .thumbnail img {
+/* 通常時（単一画像）のホバー拡大 */
+.item-card:hover .thumbnail:not(.is-grid) img {
   transform: scale(1.05);
+}
+
+/* グリッド時（is-grid）は拡大させない（transformを初期化） */
+.item-card:hover .thumbnail.is-grid img {
+  transform: none;
 }
 
 .icon-placeholder {
@@ -121,6 +140,7 @@ const typeBadge = computed(() => {
   text-transform: uppercase;
   letter-spacing: 0.5px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  z-index: 1;
 }
 
 .content {
@@ -143,35 +163,16 @@ const typeBadge = computed(() => {
   margin: 0;
 }
 
+/* レスポンシブ */
 @media (max-width: 768px) {
-  .icon-placeholder {
-    font-size: 3rem;
-  }
-
-  .type-badge {
-    top: 0.5rem;
-    right: 0.5rem;
-    padding: 0.25rem 0.625rem;
-    font-size: 0.7rem;
-  }
-
-  .content {
-    padding: 0.75rem;
-  }
-
-  .title {
-    font-size: 0.875rem;
-  }
+  .icon-placeholder { font-size: 3rem; }
+  .type-badge { top: 0.5rem; right: 0.5rem; padding: 0.25rem 0.625rem; font-size: 0.7rem; }
+  .content { padding: 0.75rem; }
+  .title { font-size: 0.875rem; }
 }
 
 @media (max-width: 480px) {
-  .icon-placeholder {
-    font-size: 2.5rem;
-  }
-
-  .type-badge {
-    font-size: 0.65rem;
-    padding: 0.25rem 0.5rem;
-  }
+  .icon-placeholder { font-size: 2.5rem; }
+  .type-badge { font-size: 0.65rem; padding: 0.25rem 0.5rem; }
 }
 </style>

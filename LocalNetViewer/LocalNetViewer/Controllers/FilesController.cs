@@ -1,5 +1,4 @@
-﻿using LocalNetViewer.Constants;
-using LocalNetViewer.Models;
+﻿using LocalNetViewer.Models;
 using LocalNetViewer.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.StaticFiles;

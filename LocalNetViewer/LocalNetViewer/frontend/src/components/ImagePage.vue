@@ -96,6 +96,7 @@
 import { onMounted, onUnmounted, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { FileInfoViewModel, FileType, ImagePageMode } from '../types';
+import { getImagePageMode, setImagePageMode, setPosition } from '../services/LocalStorageService';
 
 const props = defineProps<{
   position: string
@@ -123,7 +124,7 @@ const progressPercentage = computed(() => {
 })
 
 onMounted(async () => {
-  viewMode.value = (await (await fetch('/api/settings/imagePageMode')).json()) as ImagePageMode;
+  viewMode.value = getImagePageMode();
   
   const parentPosition = props.position.split('-').slice(0, -1).join("-")
   const response = await fetch(`/api/files/${parentPosition}/child`)
@@ -149,13 +150,7 @@ onMounted(async () => {
   window.addEventListener('scroll', handleScroll)
   window.addEventListener('click', handleScreenClick)
   
-  await fetch('/api/settings/position', {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(parentPosition)
-  });
+  setPosition(parentPosition);
 })
 
 onUnmounted(() => {
@@ -348,13 +343,7 @@ const changeMode = (mode: ImagePageMode) => {
     showHeader.value = false
   }
 
-  fetch('/api/settings/imagePageMode', {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(mode)
-  });
+  setImagePageMode(mode);
 }
 
 const router = useRouter()

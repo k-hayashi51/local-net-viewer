@@ -56,7 +56,7 @@ namespace LocalNetViewer.Services
                     ChildImagePositions = [.. Directory.EnumerateFiles(dirs[i], "*", options)
                         .Select((path, index) => new { path, index })
                         .Where(x => Path.GetExtension(x.path).ToFileType() == FileType.Image)
-                        .Take(3)
+                        .Take(4)
                         .Select(x => $"{childPosition}-{childDirsCount + x.index + 1}")]
                 });
             }
