@@ -17,17 +17,8 @@
 
     <!-- Breadcrumb -->
     <nav class="breadcrumb">
-      <button
-        @click="navigateToAsync('')"
-        class="breadcrumb-item"
-        :class="{ 'active': breadcrumbs.length === 0 }">Top</button>
-      <button
-        v-for="(crumb, index) in breadcrumbs"
-        :key="crumb.position"
-        @click="navigateToAsync(crumb.position)"
-        class="breadcrumb-item"
-        :class="{ 'active': index === breadcrumbs.length - 1 }"
-      >
+      <button @click="navigateToAsync('')" class="breadcrumb-item" :class="{ active: breadcrumbs.length === 0 }">Top</button>
+      <button v-for="(crumb, index) in breadcrumbs" :key="crumb.position" @click="navigateToAsync(crumb.position)" class="breadcrumb-item" :class="{ active: index === breadcrumbs.length - 1 }">
         {{ crumb.name }}
         <span v-if="index < breadcrumbs.length - 1" class="separator">/</span>
       </button>
@@ -38,12 +29,7 @@
     </div>
 
     <div class="grid-container" v-else>
-      <ItemCard
-        v-for="item in files"
-        :key="item.position"
-        :item="item"
-        @click="handleItemClick(item)"
-      />
+      <ItemCard v-for="item in files" :key="item.position" :item="item" @click="handleItemClick(item)" />
     </div>
 
     <div class="empty" v-if="!loading && files.length === 0">
@@ -53,37 +39,40 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import ItemCard from './ItemCard.vue'
-import { Disclosure, DisclosureButton, DisclosurePanel } from '@headlessui/vue'
-import QrcodeVue from "qrcode.vue";
-import { FileType, type FileInfoViewModel } from '../types'
+import { onMounted, ref, watch } from 'vue';
+import { useRouter } from 'vue-router';
+import ItemCard from './ItemCard.vue';
+import { Disclosure, DisclosureButton, DisclosurePanel } from '@headlessui/vue';
+import QrcodeVue from 'qrcode.vue';
+import { FileType, type FileInfoViewModel } from '../types';
 import { getPosition, setPosition } from '../services/LocalStorageService';
 
 interface Breadcrumb {
-  name: string
-  position: string
+  name: string;
+  position: string;
 }
 
 const props = defineProps<{
-  position?: string
-}>()
+  position?: string;
+}>();
 
-const router = useRouter()
-const files = ref<FileInfoViewModel[]>([])
-const loading = ref(false)
-const url = ref('')
-const breadcrumbs = ref<Breadcrumb[]>([])
+const router = useRouter();
+const files = ref<FileInfoViewModel[]>([]);
+const loading = ref(false);
+const url = ref('');
+const breadcrumbs = ref<Breadcrumb[]>([]);
 
 onMounted(async () => {
   // 接続用URLを取得する。
-  url.value = await (await fetch(`/api/network/url`)).text()
+  url.value = await (await fetch(`/api/network/url`)).text();
   // 表示ファイルを更新する。
-  await updateFilesAsync()
-})
+  await updateFilesAsync();
+});
 
-watch(() => props.position, async () => await updateFilesAsync())
+watch(
+  () => props.position,
+  async () => await updateFilesAsync(),
+);
 
 /**
  * 表示ファイルを更新する。
@@ -94,16 +83,16 @@ const updateFilesAsync = async () => {
     let response = new Response();
     try {
       // 指定したディレクトリ位置に表示されている子ディレクトリ情報を取得する。
-      response = await fetch(`/api/files/${props.position}/child`)
+      response = await fetch(`/api/files/${props.position}/child`);
     } catch {
       // 子ディレクトリ情報の取得に失敗した場合、トップに戻す。
       navigateToAsync('');
       return;
     }
-    files.value = await response.json()
-    await updateBreadcrumbs(props.position) // パンくずリストを更新する。
+    files.value = await response.json();
+    await updateBreadcrumbs(props.position); // パンくずリストを更新する。
     setPosition(props.position); // ローカルセッションに使用したディレクトリ位置を記憶する。
-    return
+    return;
   }
 
   // URLに指定のディレクトリ位置が存在しない場合、ローカルセッションに登録されているディレクトリ位置を表示させる。
@@ -112,12 +101,12 @@ const updateFilesAsync = async () => {
     navigateToAsync(position);
     return;
   }
-  
+
   // URLにもローカルセッションにもディレクトリ位置がない場合、トップに戻す。
-  const response = await fetch(`/api/files`)
-  files.value = await response.json()
-  breadcrumbs.value = []
-}
+  const response = await fetch(`/api/files`);
+  files.value = await response.json();
+  breadcrumbs.value = [];
+};
 
 const updateBreadcrumbs = async (position: string) => {
   try {
@@ -127,44 +116,44 @@ const updateBreadcrumbs = async (position: string) => {
     const dirNames = fullPath.split(/[\\/]/);
     const positionIds = position.split('-');
 
-    breadcrumbs.value = positionIds
-      .map((_, index): Breadcrumb => ({
+    breadcrumbs.value = positionIds.map(
+      (_, index): Breadcrumb => ({
         name: dirNames[index],
         position: positionIds.slice(0, index + 1).join('-'),
-      }));
-
+      }),
+    );
   } catch (error) {
-    console.error('パンくずリストの取得エラー:', error)
-    breadcrumbs.value = []
+    console.error('パンくずリストの取得エラー:', error);
+    breadcrumbs.value = [];
   }
-}
+};
 
 const navigateToAsync = async (position: string) => {
   if (position) {
-    router.push(`/${position}`)
+    router.push(`/${position}`);
   } else {
     setPosition('');
-    router.push('/')
+    router.push('/');
   }
-}
+};
 
 const handleItemClick = (item: FileInfoViewModel) => {
   if (item.isDirectory) {
-    router.push(`/${item.position}`)
-    return
+    router.push(`/${item.position}`);
+    return;
   }
   switch (item.fileType) {
     case FileType.Image:
-      router.push(`/image/${item.position}`)
-      return
+      router.push(`/image/${item.position}`);
+      return;
     case FileType.Pdf:
-      router.push(`/pdf/${item.position}`)
-      return
+      router.push(`/pdf/${item.position}`);
+      return;
     case FileType.Video:
-      router.push(`/video/${item.position}`)
-      return
+      router.push(`/video/${item.position}`);
+      return;
   }
-}
+};
 </script>
 
 <style scoped>
@@ -253,7 +242,9 @@ h1 {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .grid-container {

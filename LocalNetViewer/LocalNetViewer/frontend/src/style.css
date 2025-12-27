@@ -35,7 +35,8 @@ button {
   font: inherit;
 }
 
-input, select {
+input,
+select {
   font: inherit;
   color: inherit;
 }

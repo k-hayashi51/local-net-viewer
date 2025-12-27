@@ -1,22 +1,10 @@
 <template>
   <div class="item-card" @click="emit('click')">
-    <div 
-      class="thumbnail" 
-      :class="{ 'is-grid': item.fileType !== FileType.Image && item.childImagePositions.length > 0 }"
-    >
-      <img
-        v-if="props.item.fileType === FileType.Image"
-        :src="`/api/files/${item.position}/thumbnail`"
-        :alt="item.name"
-        loading="lazy" />
+    <div class="thumbnail" :class="{ 'is-grid': item.fileType !== FileType.Image && item.childImagePositions.length > 0 }">
+      <img v-if="props.item.fileType === FileType.Image" :src="`/api/files/${item.position}/thumbnail`" :alt="item.name" loading="lazy" />
 
       <template v-else-if="item.childImagePositions.length !== 0">
-        <img
-          v-for="pos in item.childImagePositions.slice(0, 4)"
-          :key="pos"
-          :src="`/api/files/${pos}/thumbnail`"
-          :alt="item.name"
-          loading="lazy" />
+        <img v-for="pos in item.childImagePositions.slice(0, 4)" :key="pos" :src="`/api/files/${pos}/thumbnail`" :alt="item.name" loading="lazy" />
       </template>
 
       <div v-else class="icon-placeholder">
@@ -34,36 +22,44 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { FileType, type FileInfoViewModel } from '../types'
+import { computed } from 'vue';
+import { FileType, type FileInfoViewModel } from '../types';
 
 const props = defineProps<{
-  item: FileInfoViewModel
-}>()
+  item: FileInfoViewModel;
+}>();
 
 const emit = defineEmits<{
-  click: []
-}>()
+  click: [];
+}>();
 
 const typeIcon = computed(() => {
-  if (props.item.isDirectory) return '📁' 
+  if (props.item.isDirectory) return '📁';
   switch (props.item.fileType) {
-    case FileType.Image: return '🖼️'
-    case FileType.Pdf: return '📄'
-    case FileType.Video: return '🎬'
-    default: return '📄'
+    case FileType.Image:
+      return '🖼️';
+    case FileType.Pdf:
+      return '📄';
+    case FileType.Video:
+      return '🎬';
+    default:
+      return '📄';
   }
-})
+});
 
 const typeBadge = computed(() => {
-  if (props.item.isDirectory) return 'フォルダ' 
+  if (props.item.isDirectory) return 'フォルダ';
   switch (props.item.fileType) {
-    case FileType.Image: return '画像'
-    case FileType.Pdf: return 'PDF'
-    case FileType.Video: return '動画'
-    default: return 'ファイル'
+    case FileType.Image:
+      return '画像';
+    case FileType.Pdf:
+      return 'PDF';
+    case FileType.Video:
+      return '動画';
+    default:
+      return 'ファイル';
   }
-})
+});
 </script>
 
 <style scoped>
@@ -165,14 +161,30 @@ const typeBadge = computed(() => {
 
 /* レスポンシブ */
 @media (max-width: 768px) {
-  .icon-placeholder { font-size: 3rem; }
-  .type-badge { top: 0.5rem; right: 0.5rem; padding: 0.25rem 0.625rem; font-size: 0.7rem; }
-  .content { padding: 0.75rem; }
-  .title { font-size: 0.875rem; }
+  .icon-placeholder {
+    font-size: 3rem;
+  }
+  .type-badge {
+    top: 0.5rem;
+    right: 0.5rem;
+    padding: 0.25rem 0.625rem;
+    font-size: 0.7rem;
+  }
+  .content {
+    padding: 0.75rem;
+  }
+  .title {
+    font-size: 0.875rem;
+  }
 }
 
 @media (max-width: 480px) {
-  .icon-placeholder { font-size: 2.5rem; }
-  .type-badge { font-size: 0.65rem; padding: 0.25rem 0.5rem; }
+  .icon-placeholder {
+    font-size: 2.5rem;
+  }
+  .type-badge {
+    font-size: 0.65rem;
+    padding: 0.25rem 0.5rem;
+  }
 }
 </style>

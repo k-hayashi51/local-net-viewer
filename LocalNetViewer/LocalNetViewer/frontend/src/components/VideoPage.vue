@@ -1,51 +1,41 @@
 <template>
   <div class="viewer-page">
     <header class="header">
-      <button @click="goBack" class="back-button">
-        ← 戻る
-      </button>
+      <button @click="goBack" class="back-button">← 戻る</button>
       <h2 class="title">{{ itemName }}</h2>
       <div class="spacer"></div>
     </header>
-    
+
     <!-- Video -->
     <div class="video-viewer">
       <div class="video-container">
-      <video
-        class="video-player"
-        :src="`/api/files/${props.position}/video`"
-        controls
-        autoplay
-        muted
-        playsinline
-        preload="metadata"
-        ></video>
+        <video class="video-player" :src="`/api/files/${props.position}/video`" controls autoplay muted playsinline preload="metadata"></video>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { FileType } from '../types'
+import { onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { FileType } from '../types';
 
 const props = defineProps<{
-  fileType: FileType
-  position: string
-}>()
+  fileType: FileType;
+  position: string;
+}>();
 
 onMounted(() => {
   console.log(props);
-})
+});
 
-const router = useRouter()
-const itemName = ref('')
+const router = useRouter();
+const itemName = ref('');
 
 const goBack = () => {
-  const parentPosition = props.position.split('-').slice(0, -1).join("-")
-  router.push(`/${parentPosition}`)
-}
+  const parentPosition = props.position.split('-').slice(0, -1).join('-');
+  router.push(`/${parentPosition}`);
+};
 </script>
 
 <style scoped>
@@ -108,7 +98,9 @@ const goBack = () => {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (max-width: 768px) {

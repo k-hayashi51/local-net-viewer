@@ -3,23 +3,25 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,vue,json,css,scss,md}\"",
     "dev": "vite --mode development",
-    "build": "rimraf ../wwwroot && vue-tsc && vite build",
+    "build": "npm run format && rimraf ../wwwroot && vue-tsc && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
     "@headlessui/vue": "^1.7.23",
+    "@vue/compiler-sfc": "^3.5.11",
     "pdfjs-dist": "^5.4.449",
     "qrcode.vue": "^3.6.0",
-    "vue": "^3.5.25",
-    "vue-router": "^4.6.3"
+    "vue": "^3.5.11",
+    "vue-router": "^4.5.0"
   },
   "devDependencies": {
-    "@typescript/native-preview": "^7.0.0-dev.20251207.1",
-    "@vitejs/plugin-vue": "^5.0.0",
+    "@vitejs/plugin-vue": "^5.0.4",
+    "prettier": "^3.3.3",
     "rimraf": "^6.1.2",
-    "typescript": "^5.9.3",
-    "vite": "^5.0.0",
-    "vue-tsc": "^3.1.6"
+    "typescript": "^5.6.3",
+    "vite": "^6.4.1",
+    "vue-tsc": "^2.1.6"
   }
 }

@@ -7,10 +7,8 @@
     </div>
 
     <!-- ヘッダー -->
-    <header class="header" :class="{ 'hidden': !showHeader }">
-      <button @click="goBack" class="back-button">
-        ← 戻る
-      </button>
+    <header class="header" :class="{ hidden: !showHeader }">
+      <button @click="goBack" class="back-button">← 戻る</button>
       <h2 class="title">{{ itemName }}</h2>
       <div v-if="viewMode === ImageShowMode.Page" class="page-selector-header">
         <select v-model.number="currentPage" @change="onPageSelect" class="page-select-header">
@@ -30,76 +28,41 @@
     </header>
 
     <!-- ページモード時のフッター進捗バー -->
-    <div v-if="viewMode === ImageShowMode.Page"
-         class="progress-footer"
-         :class="{ 'hidden': !showHeader }">
-      <div class="progress-bar"
-           @mousedown="handleProgressMouseDown"
-           @touchstart="handleProgressTouchStart"
-           @touchmove="handleProgressTouchMove"
-           @touchend="handleProgressTouchEnd">
-        <div class="progress-fill"
-             :style="{ width: progressPercentage + '%' }"></div>
-        <div class="progress-thumb"
-             :style="{ left: progressPercentage + '%' }"></div>
+    <div v-if="viewMode === ImageShowMode.Page" class="progress-footer" :class="{ hidden: !showHeader }">
+      <div class="progress-bar" @mousedown="handleProgressMouseDown" @touchstart="handleProgressTouchStart" @touchmove="handleProgressTouchMove" @touchend="handleProgressTouchEnd">
+        <div class="progress-fill" :style="{ width: progressPercentage + '%' }"></div>
+        <div class="progress-thumb" :style="{ left: progressPercentage + '%' }"></div>
       </div>
-      <div class="progress-text">
-        {{ currentPage + 1 }} / {{ totalPages }}
-      </div>
+      <div class="progress-text">{{ currentPage + 1 }} / {{ totalPages }}</div>
     </div>
 
     <!-- 表示モード切替メニュー -->
     <div v-if="showMenu" class="menu-overlay" @click="toggleMenu">
       <div class="menu-content" @click.stop>
         <h3 class="menu-title">表示モード</h3>
-        <button 
-          @click="changeMode(ImageShowMode.Scroll)" 
-          :class="{ 'active': viewMode === ImageShowMode.Scroll }"
-          class="menu-option">
-          📜 縦スクロール
-        </button>
-        <button 
-          @click="changeMode(ImageShowMode.Page)" 
-          :class="{ 'active': viewMode === ImageShowMode.Page }"
-          class="menu-option">
-          📖 ページ送り
-        </button>
+        <button @click="changeMode(ImageShowMode.Scroll)" :class="{ active: viewMode === ImageShowMode.Scroll }" class="menu-option">📜 縦スクロール</button>
+        <button @click="changeMode(ImageShowMode.Page)" :class="{ active: viewMode === ImageShowMode.Page }" class="menu-option">📖 ページ送り</button>
 
         <div class="menu-divider"></div>
 
         <h3 class="menu-title">レンダリング品質</h3>
-        <button 
-          @click="changeQuality(1.5)" 
-          :class="{ 'active': pdfQualityScale === 1.5 }"
-          class="menu-option quality-option">
+        <button @click="changeQuality(1.5)" :class="{ active: pdfQualityScale === 1.5 }" class="menu-option quality-option">
           <span class="quality-label">標準画質</span>
           <span class="quality-desc">軽量・高速</span>
         </button>
-        <button 
-          @click="changeQuality(2.5)" 
-          :class="{ 'active': pdfQualityScale === 2.5 }"
-          class="menu-option quality-option">
+        <button @click="changeQuality(2.5)" :class="{ active: pdfQualityScale === 2.5 }" class="menu-option quality-option">
           <span class="quality-label">高画質</span>
           <span class="quality-desc">バランス</span>
         </button>
-        <button 
-          @click="changeQuality(3.0)" 
-          :class="{ 'active': pdfQualityScale === 3.0 }"
-          class="menu-option quality-option">
+        <button @click="changeQuality(3.0)" :class="{ active: pdfQualityScale === 3.0 }" class="menu-option quality-option">
           <span class="quality-label">超高画質</span>
           <span class="quality-desc">詳細表示</span>
         </button>
-        <button 
-          @click="changeQuality(4.0)" 
-          :class="{ 'active': pdfQualityScale === 4.0 }"
-          class="menu-option quality-option">
+        <button @click="changeQuality(4.0)" :class="{ active: pdfQualityScale === 4.0 }" class="menu-option quality-option">
           <span class="quality-label">印刷品質</span>
           <span class="quality-desc">推奨</span>
         </button>
-        <button 
-          @click="changeQuality(5.0)" 
-          :class="{ 'active': pdfQualityScale === 5.0 }"
-          class="menu-option quality-option">
+        <button @click="changeQuality(5.0)" :class="{ active: pdfQualityScale === 5.0 }" class="menu-option quality-option">
           <span class="quality-label">最高品質</span>
           <span class="quality-desc">メモリ大</span>
         </button>
@@ -110,39 +73,21 @@
     <div class="pdf-viewer">
       <!-- スクロールモード -->
       <div v-if="viewMode === ImageShowMode.Scroll" class="scroll-mode">
-        <div
-          v-for="pageNum in totalPages"
-          :key="pageNum"
-          class="canvas-wrapper">
+        <div v-for="pageNum in totalPages" :key="pageNum" class="canvas-wrapper">
           <div v-if="!renderedPages[pageNum - 1]" class="page-loading">
             <div class="loading-spinner small"></div>
           </div>
-          <canvas
-            v-show="renderedPages[pageNum - 1]"
-            :ref="(el) => setCanvasRef(el, pageNum - 1)"
-            class="pdf-page"
-            @load="onPageRendered(pageNum - 1)">
-          </canvas>
+          <canvas v-show="renderedPages[pageNum - 1]" :ref="(el) => setCanvasRef(el, pageNum - 1)" class="pdf-page" @load="onPageRendered(pageNum - 1)"> </canvas>
         </div>
       </div>
 
       <!-- ページモード -->
-      <div v-else 
-           class="page-mode"
-           :class="{ 'has-header': showHeader }"
-           @click="handlePageClick"
-           @touchstart="handleTouchStart"
-           @touchmove="handleTouchMove"
-           @touchend="handleTouchEnd">
+      <div v-else class="page-mode" :class="{ 'has-header': showHeader }" @click="handlePageClick" @touchstart="handleTouchStart" @touchmove="handleTouchMove" @touchend="handleTouchEnd">
         <div class="page-container">
           <div v-if="!renderedPages[currentPage]" class="page-loading">
             <div class="loading-spinner"></div>
           </div>
-          <canvas
-            v-show="renderedPages[currentPage]"
-            ref="currentPageCanvas"
-            class="current-page">
-          </canvas>
+          <canvas v-show="renderedPages[currentPage]" ref="currentPageCanvas" class="current-page"> </canvas>
         </div>
       </div>
     </div>
@@ -150,392 +95,388 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, computed, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import type { PDFDocumentProxy } from 'pdfjs-dist'
+import { onMounted, onUnmounted, ref, computed, watch } from 'vue';
+import { useRouter } from 'vue-router';
+import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { ImageShowMode } from '../types';
 import { getImageShowMode, getPdfQualityScale, setPdfQualityScale } from '../services/LocalStorageService';
 
-let pdfjsLib: typeof import('pdfjs-dist') | null = null
+let pdfjsLib: typeof import('pdfjs-dist') | null = null;
 
 const props = defineProps<{
-  position: string
-}>()
+  position: string;
+}>();
 
-const viewMode = ref<ImageShowMode>(ImageShowMode.Scroll)
-const currentPage = ref(0)
-const totalPages = ref(0)
-const showHeader = ref(false)
-const showMenu = ref(false)
-const lastScrollY = ref(0)
-const isLoading = ref(true)
-const itemName = ref('')
-const isDraggingProgress = ref(false)
+const viewMode = ref<ImageShowMode>(ImageShowMode.Scroll);
+const currentPage = ref(0);
+const totalPages = ref(0);
+const showHeader = ref(false);
+const showMenu = ref(false);
+const lastScrollY = ref(0);
+const isLoading = ref(true);
+const itemName = ref('');
+const isDraggingProgress = ref(false);
 
 // タッチイベント用の変数
-const touchStartX = ref(0)
-const touchStartY = ref(0)
-const touchEndX = ref(0)
-const touchEndY = ref(0)
-const minSwipeDistance = 50
+const touchStartX = ref(0);
+const touchStartY = ref(0);
+const touchEndX = ref(0);
+const touchEndY = ref(0);
+const minSwipeDistance = 50;
 
 // PDF画質設定（高いほど高画質だがメモリ使用量が増加）
-const pdfQualityScale = ref(4.0)
+const pdfQualityScale = ref(4.0);
 
-let pdfDoc: PDFDocumentProxy | null = null
-const canvasRefs = ref<HTMLCanvasElement[]>([])
-const currentPageCanvas = ref<HTMLCanvasElement | null>(null)
-const renderedPages = ref<Record<number, boolean>>({})
+let pdfDoc: PDFDocumentProxy | null = null;
+const canvasRefs = ref<HTMLCanvasElement[]>([]);
+const currentPageCanvas = ref<HTMLCanvasElement | null>(null);
+const renderedPages = ref<Record<number, boolean>>({});
 
 const progressPercentage = computed(() => {
-  if (totalPages.value === 0) return 0
-  return ((currentPage.value + 1) / totalPages.value) * 100
-})
+  if (totalPages.value === 0) return 0;
+  return ((currentPage.value + 1) / totalPages.value) * 100;
+});
 
 const setCanvasRef = (el: unknown, index: number) => {
   if (el && el instanceof HTMLCanvasElement) {
-    canvasRefs.value[index] = el
+    canvasRefs.value[index] = el;
   }
-}
+};
 
 const onPageRendered = (pageNum: number) => {
-  renderedPages.value[pageNum] = true
-}
+  renderedPages.value[pageNum] = true;
+};
 
 onMounted(async () => {
   viewMode.value = getImageShowMode();
   pdfQualityScale.value = getPdfQualityScale();
 
-  await loadPDF()
-  window.addEventListener('scroll', handleScroll)
-  window.addEventListener('click', handleScreenClick)
-  
+  await loadPDF();
+  window.addEventListener('scroll', handleScroll);
+  window.addEventListener('click', handleScreenClick);
+
   // ページモード時はbodyのスクロールを無効化
   if (viewMode.value === ImageShowMode.Page) {
-    document.body.style.overflow = 'hidden'
-    document.body.style.position = 'fixed'
-    document.body.style.width = '100%'
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.width = '100%';
   }
-})
+});
 
 onUnmounted(() => {
-  window.removeEventListener('scroll', handleScroll)
-  window.removeEventListener('click', handleScreenClick)
-  document.removeEventListener('mousemove', handleProgressMouseMove)
-  document.removeEventListener('mouseup', handleProgressMouseUp)
-  
+  window.removeEventListener('scroll', handleScroll);
+  window.removeEventListener('click', handleScreenClick);
+  document.removeEventListener('mousemove', handleProgressMouseMove);
+  document.removeEventListener('mouseup', handleProgressMouseUp);
+
   // bodyのスクロール制限を解除
-  document.body.style.overflow = ''
-  document.body.style.position = ''
-  document.body.style.width = ''
-})
+  document.body.style.overflow = '';
+  document.body.style.position = '';
+  document.body.style.width = '';
+});
 
 const loadPDF = async () => {
   try {
     if (!pdfjsLib) {
-      pdfjsLib = await import('pdfjs-dist')
-      
-      pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-        'pdfjs-dist/build/pdf.worker.min.mjs',
-        import.meta.url
-      ).toString()
+      pdfjsLib = await import('pdfjs-dist');
+
+      pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
     }
-    
-    const response = await fetch(`/api/files/${props.position}`)
-    const arrayBuffer = await response.arrayBuffer()
-    
-    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer })
-    pdfDoc = await loadingTask.promise
-    totalPages.value = pdfDoc.numPages
-    
-    isLoading.value = false
-    
+
+    const response = await fetch(`/api/files/${props.position}`);
+    const arrayBuffer = await response.arrayBuffer();
+
+    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+    pdfDoc = await loadingTask.promise;
+    totalPages.value = pdfDoc.numPages;
+
+    isLoading.value = false;
+
     // 初期表示
     if (viewMode.value === ImageShowMode.Scroll) {
-      setTimeout(() => renderAllPages(), 100)
+      setTimeout(() => renderAllPages(), 100);
     } else {
-      setTimeout(() => renderPage(currentPage.value), 100)
+      setTimeout(() => renderPage(currentPage.value), 100);
     }
   } catch (error) {
-    console.error('PDF読み込みエラー:', error)
-    isLoading.value = false
+    console.error('PDF読み込みエラー:', error);
+    isLoading.value = false;
   }
-}
+};
 
 const renderPage = async (pageNum: number) => {
-  if (!pdfDoc) return
-  
+  if (!pdfDoc) return;
+
   try {
-    const page = await pdfDoc.getPage(pageNum + 1)
-    let canvas: HTMLCanvasElement | null = null
-    
+    const page = await pdfDoc.getPage(pageNum + 1);
+    let canvas: HTMLCanvasElement | null = null;
+
     if (viewMode.value === ImageShowMode.Page) {
-      canvas = currentPageCanvas.value
+      canvas = currentPageCanvas.value;
     } else {
-      canvas = canvasRefs.value[pageNum] || null
+      canvas = canvasRefs.value[pageNum] || null;
     }
-    
-    if (!canvas) return
-    
-    const context = canvas.getContext('2d')
-    if (!context) return
-    
+
+    if (!canvas) return;
+
+    const context = canvas.getContext('2d');
+    if (!context) return;
+
     // デバイスピクセル比を考慮した高解像度レンダリング
-    const devicePixelRatio = window.devicePixelRatio || 1
-    const viewport = page.getViewport({ scale: 1.0 })
-    
+    const devicePixelRatio = window.devicePixelRatio || 1;
+    const viewport = page.getViewport({ scale: 1.0 });
+
     // 画面サイズに合わせた表示スケールを計算
-    const maxWidth = window.innerWidth
-    const maxHeight = window.innerHeight
-    const scaleX = maxWidth / viewport.width
-    const scaleY = maxHeight / viewport.height
-    const displayScale = Math.min(scaleX, scaleY)
-    
+    const maxWidth = window.innerWidth;
+    const maxHeight = window.innerHeight;
+    const scaleX = maxWidth / viewport.width;
+    const scaleY = maxHeight / viewport.height;
+    const displayScale = Math.min(scaleX, scaleY);
+
     // 高解像度レンダリング用のスケール（表示スケール × デバイスピクセル比 × 品質係数）
-    const renderScale = displayScale * devicePixelRatio * pdfQualityScale.value
-    
-    const scaledViewport = page.getViewport({ scale: renderScale })
-    
+    const renderScale = displayScale * devicePixelRatio * pdfQualityScale.value;
+
+    const scaledViewport = page.getViewport({ scale: renderScale });
+
     // Canvas要素のピクセルサイズ（高解像度）
-    canvas.width = scaledViewport.width
-    canvas.height = scaledViewport.height
-    
+    canvas.width = scaledViewport.width;
+    canvas.height = scaledViewport.height;
+
     // CSS表示サイズ（画面に合わせた通常サイズ）
-    canvas.style.width = `${scaledViewport.width / devicePixelRatio / pdfQualityScale.value}px`
-    canvas.style.height = `${scaledViewport.height / devicePixelRatio / pdfQualityScale.value}px`
-    
+    canvas.style.width = `${scaledViewport.width / devicePixelRatio / pdfQualityScale.value}px`;
+    canvas.style.height = `${scaledViewport.height / devicePixelRatio / pdfQualityScale.value}px`;
+
     const renderContext = {
       canvasContext: context,
       viewport: scaledViewport,
-      canvas: canvas
-    }
-    
-    await page.render(renderContext).promise
-    onPageRendered(pageNum)
+      canvas: canvas,
+    };
+
+    await page.render(renderContext).promise;
+    onPageRendered(pageNum);
   } catch (error) {
-    console.error(`ページ${pageNum + 1}のレンダリングエラー:`, error)
+    console.error(`ページ${pageNum + 1}のレンダリングエラー:`, error);
   }
-}
+};
 
 const renderAllPages = async () => {
   for (let i = 0; i < totalPages.value; i++) {
-    await renderPage(i)
+    await renderPage(i);
   }
-}
+};
 
 watch(currentPage, (newPage) => {
   if (viewMode.value === ImageShowMode.Page && !isLoading.value) {
-    setTimeout(() => renderPage(newPage), 50)
+    setTimeout(() => renderPage(newPage), 50);
   }
-})
+});
 
 watch(viewMode, (newMode) => {
   if (newMode === ImageShowMode.Scroll && !isLoading.value) {
-    setTimeout(() => renderAllPages(), 100)
+    setTimeout(() => renderAllPages(), 100);
   } else if (newMode === ImageShowMode.Page && !isLoading.value) {
-    setTimeout(() => renderPage(currentPage.value), 100)
+    setTimeout(() => renderPage(currentPage.value), 100);
   }
-})
+});
 
 const handleTouchStart = (event: TouchEvent) => {
-  touchStartX.value = event.touches[0].clientX
-  touchStartY.value = event.touches[0].clientY
-}
+  touchStartX.value = event.touches[0].clientX;
+  touchStartY.value = event.touches[0].clientY;
+};
 
 const handleTouchMove = (event: TouchEvent) => {
-  touchEndX.value = event.touches[0].clientX
-  touchEndY.value = event.touches[0].clientY
-}
+  touchEndX.value = event.touches[0].clientX;
+  touchEndY.value = event.touches[0].clientY;
+};
 
 const handleTouchEnd = () => {
   if (isDraggingProgress.value) {
-    isDraggingProgress.value = false
-    return
+    isDraggingProgress.value = false;
+    return;
   }
-  
-  const deltaX = touchEndX.value - touchStartX.value
-  const deltaY = touchEndY.value - touchStartY.value
-  
+
+  const deltaX = touchEndX.value - touchStartX.value;
+  const deltaY = touchEndY.value - touchStartY.value;
+
   if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > minSwipeDistance) {
     if (deltaX > 0) {
-      prevPage()
+      prevPage();
     } else {
-      nextPage()
+      nextPage();
     }
-    showHeader.value = false
+    showHeader.value = false;
   }
-  
-  touchStartX.value = 0
-  touchStartY.value = 0
-  touchEndX.value = 0
-  touchEndY.value = 0
-}
+
+  touchStartX.value = 0;
+  touchStartY.value = 0;
+  touchEndX.value = 0;
+  touchEndY.value = 0;
+};
 
 const handleProgressMouseDown = (event: MouseEvent) => {
-  isDraggingProgress.value = true
-  updateProgressPosition(event.clientX, event.currentTarget as HTMLElement)
-  event.stopPropagation()
-  event.preventDefault()
-  
-  document.addEventListener('mousemove', handleProgressMouseMove)
-  document.addEventListener('mouseup', handleProgressMouseUp)
-}
+  isDraggingProgress.value = true;
+  updateProgressPosition(event.clientX, event.currentTarget as HTMLElement);
+  event.stopPropagation();
+  event.preventDefault();
+
+  document.addEventListener('mousemove', handleProgressMouseMove);
+  document.addEventListener('mouseup', handleProgressMouseUp);
+};
 
 const handleProgressMouseMove = (event: MouseEvent) => {
-  if (!isDraggingProgress.value) return
-  
-  const progressBar = document.querySelector('.progress-bar') as HTMLElement
+  if (!isDraggingProgress.value) return;
+
+  const progressBar = document.querySelector('.progress-bar') as HTMLElement;
   if (progressBar) {
-    updateProgressPosition(event.clientX, progressBar)
+    updateProgressPosition(event.clientX, progressBar);
   }
-  event.preventDefault()
-}
+  event.preventDefault();
+};
 
 const handleProgressMouseUp = () => {
-  isDraggingProgress.value = false
-  document.removeEventListener('mousemove', handleProgressMouseMove)
-  document.removeEventListener('mouseup', handleProgressMouseUp)
-}
+  isDraggingProgress.value = false;
+  document.removeEventListener('mousemove', handleProgressMouseMove);
+  document.removeEventListener('mouseup', handleProgressMouseUp);
+};
 
 const updateProgressPosition = (clientX: number, element: HTMLElement) => {
-  const rect = element.getBoundingClientRect()
-  const x = clientX - rect.left
-  const percentage = Math.max(0, Math.min(1, x / rect.width))
-  const newPage = Math.floor(percentage * totalPages.value)
-  currentPage.value = Math.max(0, Math.min(newPage, totalPages.value - 1))
-}
+  const rect = element.getBoundingClientRect();
+  const x = clientX - rect.left;
+  const percentage = Math.max(0, Math.min(1, x / rect.width));
+  const newPage = Math.floor(percentage * totalPages.value);
+  currentPage.value = Math.max(0, Math.min(newPage, totalPages.value - 1));
+};
 
 const handleProgressTouchStart = (event: TouchEvent) => {
-  isDraggingProgress.value = true
-  event.stopPropagation()
-}
+  isDraggingProgress.value = true;
+  event.stopPropagation();
+};
 
 const handleProgressTouchMove = (event: TouchEvent) => {
-  if (!isDraggingProgress.value) return
-  
-  const target = event.currentTarget as HTMLElement
-  const rect = target.getBoundingClientRect()
-  const touchX = event.touches[0].clientX - rect.left
-  const percentage = Math.max(0, Math.min(1, touchX / rect.width))
-  const newPage = Math.floor(percentage * totalPages.value)
-  currentPage.value = Math.max(0, Math.min(newPage, totalPages.value - 1))
-  
-  event.stopPropagation()
-  event.preventDefault()
-}
+  if (!isDraggingProgress.value) return;
+
+  const target = event.currentTarget as HTMLElement;
+  const rect = target.getBoundingClientRect();
+  const touchX = event.touches[0].clientX - rect.left;
+  const percentage = Math.max(0, Math.min(1, touchX / rect.width));
+  const newPage = Math.floor(percentage * totalPages.value);
+  currentPage.value = Math.max(0, Math.min(newPage, totalPages.value - 1));
+
+  event.stopPropagation();
+  event.preventDefault();
+};
 
 const handleProgressTouchEnd = (event: TouchEvent) => {
-  isDraggingProgress.value = false
-  event.stopPropagation()
-}
+  isDraggingProgress.value = false;
+  event.stopPropagation();
+};
 
 const handleScroll = () => {
-  if (viewMode.value !== ImageShowMode.Scroll) return
-  showHeader.value = false
-  lastScrollY.value = window.scrollY
-}
+  if (viewMode.value !== ImageShowMode.Scroll) return;
+  showHeader.value = false;
+  lastScrollY.value = window.scrollY;
+};
 
 const handleScreenClick = (event: MouseEvent) => {
-  if (viewMode.value !== ImageShowMode.Scroll) return
-  
-  const target = event.target as HTMLElement
+  if (viewMode.value !== ImageShowMode.Scroll) return;
+
+  const target = event.target as HTMLElement;
   if (target.closest('.header') || target.closest('.menu-overlay')) {
-    return
+    return;
   }
-  
-  const screenHeight = window.innerHeight
-  const clickY = event.clientY
-  const centerThreshold = screenHeight * 0.3
-  
+
+  const screenHeight = window.innerHeight;
+  const clickY = event.clientY;
+  const centerThreshold = screenHeight * 0.3;
+
   if (clickY > centerThreshold && clickY < screenHeight - centerThreshold) {
-    showHeader.value = !showHeader.value
+    showHeader.value = !showHeader.value;
   }
-}
+};
 
 const handlePageClick = (event: MouseEvent) => {
-  const target = event.currentTarget as HTMLElement
-  const rect = target.getBoundingClientRect()
-  const clickX = event.clientX - rect.left
-  const clickY = event.clientY - rect.top
-  const width = rect.width
-  const height = rect.height
-  
-  const leftThird = width / 3
-  const rightThird = width * 2 / 3
-  const topThird = height / 3
-  const bottomThird = height * 2 / 3
-  
-  if (clickX > leftThird && clickX < rightThird && 
-      clickY > topThird && clickY < bottomThird) {
-    showHeader.value = !showHeader.value
+  const target = event.currentTarget as HTMLElement;
+  const rect = target.getBoundingClientRect();
+  const clickX = event.clientX - rect.left;
+  const clickY = event.clientY - rect.top;
+  const width = rect.width;
+  const height = rect.height;
+
+  const leftThird = width / 3;
+  const rightThird = (width * 2) / 3;
+  const topThird = height / 3;
+  const bottomThird = (height * 2) / 3;
+
+  if (clickX > leftThird && clickX < rightThird && clickY > topThird && clickY < bottomThird) {
+    showHeader.value = !showHeader.value;
   } else if (clickX < leftThird) {
-    prevPage()
+    prevPage();
   } else if (clickX > rightThird) {
-    nextPage()
+    nextPage();
   }
-}
+};
 
 const prevPage = () => {
   if (currentPage.value > 0) {
-    currentPage.value--
-    showHeader.value = false
+    currentPage.value--;
+    showHeader.value = false;
   }
-}
+};
 
 const nextPage = () => {
   if (currentPage.value < totalPages.value - 1) {
-    currentPage.value++
-    showHeader.value = false
+    currentPage.value++;
+    showHeader.value = false;
   }
-}
+};
 
 const onPageSelect = () => {
-  showHeader.value = false
-}
+  showHeader.value = false;
+};
 
 const toggleMenu = () => {
-  showMenu.value = !showMenu.value
-}
+  showMenu.value = !showMenu.value;
+};
 
 const changeMode = (mode: ImageShowMode) => {
-  viewMode.value = mode
-  showMenu.value = false
-  showHeader.value = false
-  
+  viewMode.value = mode;
+  showMenu.value = false;
+  showHeader.value = false;
+
   if (mode === ImageShowMode.Page) {
-    document.body.style.overflow = 'hidden'
-    document.body.style.position = 'fixed'
-    document.body.style.width = '100%'
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.width = '100%';
   } else {
-    document.body.style.overflow = ''
-    document.body.style.position = ''
-    document.body.style.width = ''
-    lastScrollY.value = window.scrollY
+    document.body.style.overflow = '';
+    document.body.style.position = '';
+    document.body.style.width = '';
+    lastScrollY.value = window.scrollY;
   }
-}
+};
 
 const changeQuality = async (scale: number) => {
-  pdfQualityScale.value = scale
-  setPdfQualityScale(scale)
-  showMenu.value = false
-  isLoading.value = true
-  
+  pdfQualityScale.value = scale;
+  setPdfQualityScale(scale);
+  showMenu.value = false;
+  isLoading.value = true;
+
   // 品質変更後に再レンダリング
   if (viewMode.value === ImageShowMode.Scroll) {
-    await renderAllPages()
+    await renderAllPages();
   } else {
-    await renderPage(currentPage.value)
+    await renderPage(currentPage.value);
   }
-  
-  isLoading.value = false
-}
 
-const router = useRouter()
+  isLoading.value = false;
+};
+
+const router = useRouter();
 
 const goBack = () => {
-  const parentPosition = props.position.split('-').slice(0, -1).join("-")
-  router.push(`/${parentPosition}`)
-}
+  const parentPosition = props.position.split('-').slice(0, -1).join('-');
+  router.push(`/${parentPosition}`);
+};
 </script>
 
 <style scoped>
@@ -917,17 +858,17 @@ const goBack = () => {
   .menu-overlay {
     padding: 4rem 1rem 1rem 1rem;
   }
-  
+
   .page-selector-header {
     gap: 0.25rem;
   }
-  
+
   .page-select-header {
     font-size: 0.875rem;
     padding: 0.375rem 0.5rem;
     min-width: 50px;
   }
-  
+
   .page-total {
     font-size: 0.875rem;
   }
