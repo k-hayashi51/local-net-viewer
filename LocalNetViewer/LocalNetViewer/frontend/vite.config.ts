@@ -16,6 +16,8 @@ export default defineConfig(({ mode }) => ({
     sourcemap: mode === 'development',
   },
   server: {
+    port: 5174,
+    strictPort: true, // 既に使用中なら起動失敗
     proxy: {
       '/api': {
         target: 'http://localhost:5197',
