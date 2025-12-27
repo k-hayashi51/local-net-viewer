@@ -1,11 +1,26 @@
 <template>
   <div class="viewer-page">
+    <!-- ローディングオーバーレイ -->
+    <div v-if="isLoading" class="loading-overlay">
+      <div class="loading-spinner"></div>
+      <p class="loading-text">読み込み中...</p>
+    </div>
+
+    <!-- 画面上部ヘッダー（スクロール／ページ共通） -->
+    <!-- showHeader=false のときは transform で画面外へ隠れる -->
     <header class="header" :class="{ 'hidden': !showHeader }">
+      
+      <!-- 戻るボタン：親ディレクトリへ遷移 -->
       <button @click="goBack" class="back-button">
         ← 戻る
       </button>
+
+      <!-- 現在表示中アイテム名 -->
       <h2 class="title">{{ itemName }}</h2>
+
+      <!-- ページモード時のみ表示されるページセレクタ -->
       <div v-if="viewMode === ImagePageMode.Page" class="page-selector-header">
+        <!-- ページ番号を直接選択 -->
         <select v-model.number="currentPage" @change="onPageSelect" class="page-select-header">
           <option v-for="(_, index) in imagePositions" :key="index" :value="index">
             {{ index + 1 }}
@@ -13,79 +28,105 @@
         </select>
         <span class="page-total">/ {{ imagePositions.length }}</span>
       </div>
+
+      <!-- ハンバーガーメニュー（表示モード切替） -->
       <button @click="toggleMenu" class="hamburger-button">
         <span class="hamburger-icon">
-          <span></span>
-          <span></span>
-          <span></span>
+          <span></span><span></span><span></span>
         </span>
       </button>
     </header>
 
-    <!-- Progress Bar Footer -->
-    <div v-if="viewMode === ImagePageMode.Page" class="progress-footer" :class="{ 'hidden': !showHeader }">
-      <div 
-        class="progress-bar" 
-        @mousedown="handleProgressMouseDown"
-        @touchstart="handleProgressTouchStart"
-        @touchmove="handleProgressTouchMove"
-        @touchend="handleProgressTouchEnd"
-      >
-        <div class="progress-fill" :style="{ width: progressPercentage + '%' }"></div>
-        <div class="progress-thumb" :style="{ left: progressPercentage + '%' }"></div>
+    <!-- ページモード時のフッター進捗バー -->
+    <div v-if="viewMode === ImagePageMode.Page"
+         class="progress-footer"
+         :class="{ 'hidden': !showHeader }">
+
+      <!-- 進捗バー本体（マウス／タッチ対応） -->
+      <div class="progress-bar"
+           @mousedown="handleProgressMouseDown"
+           @touchstart="handleProgressTouchStart"
+           @touchmove="handleProgressTouchMove"
+           @touchend="handleProgressTouchEnd">
+
+        <!-- 現在位置の塗りつぶし -->
+        <div class="progress-fill"
+             :style="{ width: progressPercentage + '%' }"></div>
+
+        <!-- ドラッグ用のつまみ -->
+        <div class="progress-thumb"
+             :style="{ left: progressPercentage + '%' }"></div>
       </div>
-      <div class="progress-text">{{ currentPage + 1 }} / {{ imagePositions.length }}</div>
+
+      <!-- ページ番号表示 -->
+      <div class="progress-text">
+        {{ currentPage + 1 }} / {{ imagePositions.length }}
+      </div>
     </div>
 
-    <!-- Hamburger Menu -->
+    <!-- 表示モード切替メニュー -->
     <div v-if="showMenu" class="menu-overlay" @click="toggleMenu">
       <div class="menu-content" @click.stop>
         <h3 class="menu-title">表示モード</h3>
-        <button 
-          @click="changeMode(ImagePageMode.Scroll)" 
+
+        <!-- 縦スクロールモード -->
+        <button
+          @click="changeMode(ImagePageMode.Scroll)"
           :class="{ 'active': viewMode === ImagePageMode.Scroll }"
-          class="menu-option"
-        >
+          class="menu-option">
           📜 縦スクロール
         </button>
-        <button 
-          @click="changeMode(ImagePageMode.Page)" 
+
+        <!-- ページ送りモード -->
+        <button
+          @click="changeMode(ImagePageMode.Page)"
           :class="{ 'active': viewMode === ImagePageMode.Page }"
-          class="menu-option"
-        >
+          class="menu-option">
           📖 ページ送り
         </button>
       </div>
     </div>
 
-    <!-- Image -->
+    <!-- 画像表示エリア -->
     <div class="image-viewer">
+      
+      <!-- スクロールモード：全画像を縦に並べて表示 -->
       <div v-if="viewMode === ImagePageMode.Scroll" class="scroll-mode">
-        <img
+        <div
           v-for="(imagePosition, index) in imagePositions"
           :key="index"
-          :src="`/api/files/${imagePosition}`"
-          :alt="`Page ${index + 1}`"
-          loading="lazy"
-          class="page-image"
-        />
+          class="image-wrapper">
+          <div v-if="!loadedImages[imagePosition]" class="image-loading">
+            <div class="loading-spinner small"></div>
+          </div>
+          <img
+            v-show="loadedImages[imagePosition]"
+            :src="imageDataUrls[imagePosition]"
+            :alt="`Page ${index + 1}`"
+            class="page-image"
+            @load="onImageLoad(imagePosition)" />
+        </div>
       </div>
 
-      <div 
-        v-else 
-        class="page-mode" 
-        :class="{ 'has-header': showHeader }"
-        @click="handlePageClick"
-        @touchstart="handleTouchStart"
-        @touchmove="handleTouchMove"
-        @touchend="handleTouchEnd"
-      >
+      <!-- ページモード：1枚ずつ表示 -->
+      <div v-else
+           class="page-mode"
+           :class="{ 'has-header': showHeader }"
+           @click="handlePageClick"
+           @touchstart="handleTouchStart"
+           @touchmove="handleTouchMove"
+           @touchend="handleTouchEnd">
+
         <div v-if="imagePositions.length > 0" class="page-container">
-          <img 
-            :src="`/api/files/${imagePositions[currentPage]}`" 
-            :alt="`Page ${currentPage + 1}`" 
-            class="current-page" 
-          />
+          <div v-if="!loadedImages[imagePositions[currentPage]]" class="image-loading">
+            <div class="loading-spinner"></div>
+          </div>
+          <img
+            v-show="loadedImages[imagePositions[currentPage]]"
+            :src="imageDataUrls[imagePositions[currentPage]]"
+            :alt="`Page ${currentPage + 1}`"
+            class="current-page"
+            @load="onImageLoad(imagePositions[currentPage])" />
         </div>
       </div>
     </div>
@@ -105,7 +146,7 @@ const props = defineProps<{
 const viewMode = ref<ImagePageMode>(ImagePageMode.Scroll)
 const currentPage = ref(0)
 const imagePositions = ref<string[]>([])
-const showHeader = ref(true)
+const showHeader = ref(false)
 const showMenu = ref(false)
 const lastScrollY = ref(0)
 const scrollThreshold = 50
@@ -118,10 +159,61 @@ const touchEndY = ref(0)
 const minSwipeDistance = 50
 const isDraggingProgress = ref(false)
 
+// 画像ロード管理用の変数
+const isLoading = ref(true)
+const imageDataUrls = ref<Record<string, string>>({})
+const loadedImages = ref<Record<string, boolean>>({})
+
 const progressPercentage = computed(() => {
   if (imagePositions.value.length === 0) return 0
   return ((currentPage.value + 1) / imagePositions.value.length) * 100
 })
+
+const fetchImage = async (position: string): Promise<string> => {
+  if (imageDataUrls.value[position]) {
+    return imageDataUrls.value[position]
+  }
+  
+  const response = await fetch(`/api/files/${position}`)
+  const blob = await response.blob()
+  const dataUrl = URL.createObjectURL(blob)
+  imageDataUrls.value[position] = dataUrl
+  return dataUrl
+}
+
+const onImageLoad = (position: string) => {
+  loadedImages.value[position] = true
+}
+
+const preloadImages = async () => {
+  // 初期表示用の画像を先にロード
+  if (viewMode.value === ImagePageMode.Page && imagePositions.value.length > 0) {
+    await fetchImage(imagePositions.value[currentPage.value])
+    
+    // 前後の画像をプリロード
+    if (currentPage.value > 0) {
+      fetchImage(imagePositions.value[currentPage.value - 1])
+    }
+    if (currentPage.value < imagePositions.value.length - 1) {
+      fetchImage(imagePositions.value[currentPage.value + 1])
+    }
+  } else if (viewMode.value === ImagePageMode.Scroll) {
+    // スクロールモードでは最初の数枚をロード
+    const initialLoadCount = Math.min(3, imagePositions.value.length)
+    for (let i = 0; i < initialLoadCount; i++) {
+      await fetchImage(imagePositions.value[i])
+    }
+    
+    // 残りは遅延ロード
+    setTimeout(() => {
+      for (let i = initialLoadCount; i < imagePositions.value.length; i++) {
+        fetchImage(imagePositions.value[i])
+      }
+    }, 100)
+  }
+  
+  isLoading.value = false
+}
 
 onMounted(async () => {
   viewMode.value = getImagePageMode();
@@ -135,20 +227,30 @@ onMounted(async () => {
   const initialIndex = imagePositions.value.findIndex(pos => pos === props.position)
   if (initialIndex !== -1) {
     currentPage.value = initialIndex
-    
-    // スクロールモードの場合、該当画像までスクロール
-    if (viewMode.value === ImagePageMode.Scroll) {
-      setTimeout(() => {
-        const images = document.querySelectorAll('.page-image')
-        if (images[initialIndex]) {
-          images[initialIndex].scrollIntoView({ behavior: 'smooth', block: 'start' })
-        }
-      }, 100)
-    }
+  }
+  
+  // 画像のプリロード
+  await preloadImages()
+  
+  // スクロールモードの場合、該当画像までスクロール
+  if (viewMode.value === ImagePageMode.Scroll && initialIndex !== -1) {
+    setTimeout(() => {
+      const imageWrappers = document.querySelectorAll('.image-wrapper')
+      if (imageWrappers[initialIndex]) {
+        imageWrappers[initialIndex].scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    }, 100)
   }
   
   window.addEventListener('scroll', handleScroll)
   window.addEventListener('click', handleScreenClick)
+  
+  // ページモード時はbodyのスクロールを無効化
+  if (viewMode.value === ImagePageMode.Page) {
+    document.body.style.overflow = 'hidden'
+    document.body.style.position = 'fixed'
+    document.body.style.width = '100%'
+  }
   
   setPosition(parentPosition);
 })
@@ -158,6 +260,16 @@ onUnmounted(() => {
   window.removeEventListener('click', handleScreenClick)
   document.removeEventListener('mousemove', handleProgressMouseMove)
   document.removeEventListener('mouseup', handleProgressMouseUp)
+  
+  // bodyのスクロール制限を解除
+  document.body.style.overflow = ''
+  document.body.style.position = ''
+  document.body.style.width = ''
+  
+  // データURLのクリーンアップ
+  Object.values(imageDataUrls.value).forEach(url => {
+    URL.revokeObjectURL(url)
+  })
 })
 
 const handleTouchStart = (event: TouchEvent) => {
@@ -188,6 +300,8 @@ const handleTouchEnd = () => {
       // 左スワイプ：次のページ
       nextPage()
     }
+    // スワイプ時はヘッダーを非表示
+    showHeader.value = false
   }
   
   // リセット
@@ -259,20 +373,9 @@ const handleProgressTouchEnd = (event: TouchEvent) => {
 const handleScroll = () => {
   if (viewMode.value !== ImagePageMode.Scroll) return
   
-  const currentScrollY = window.scrollY
-  const scrollDiff = currentScrollY - lastScrollY.value
-  
-  // 閾値を超えたスクロールのみ反応
-  if (Math.abs(scrollDiff) > scrollThreshold) {
-    if (scrollDiff > 0) {
-      // 下スクロール
-      showHeader.value = false
-    } else {
-      // 上スクロール
-      showHeader.value = true
-    }
-    lastScrollY.value = currentScrollY
-  }
+  // スクロールされたらヘッダーを非表示
+  showHeader.value = false
+  lastScrollY.value = window.scrollY
 }
 
 const handleScreenClick = (event: MouseEvent) => {
@@ -284,28 +387,41 @@ const handleScreenClick = (event: MouseEvent) => {
     return
   }
   
-  // 画面タッチでヘッダー表示/非表示切り替え
-  showHeader.value = !showHeader.value
+  // 画面中央付近をクリックした場合のみヘッダー表示を切り替え
+  const screenHeight = window.innerHeight
+  const clickY = event.clientY
+  const centerThreshold = screenHeight * 0.3 // 上下30%の中央60%エリア
+  
+  if (clickY > centerThreshold && clickY < screenHeight - centerThreshold) {
+    showHeader.value = !showHeader.value
+  }
 }
 
 const handlePageClick = (event: MouseEvent) => {
   const target = event.currentTarget as HTMLElement
   const rect = target.getBoundingClientRect()
   const clickX = event.clientX - rect.left
+  const clickY = event.clientY - rect.top
   const width = rect.width
+  const height = rect.height
   
   const leftThird = width / 3
   const rightThird = width * 2 / 3
+  const topThird = height / 3
+  const bottomThird = height * 2 / 3
   
-  if (clickX < leftThird) {
-    // 左側クリック：前のページ
-    prevPage()
-  } else if (clickX > rightThird) {
-    // 右側クリック：次のページ
-    nextPage()
-  } else {
-    // 中央クリック：ヘッダー表示切り替え
+  // 中央エリアをクリックした場合：ヘッダー表示切り替え
+  if (clickX > leftThird && clickX < rightThird && 
+      clickY > topThird && clickY < bottomThird) {
     showHeader.value = !showHeader.value
+  } 
+  // 左側クリック：前のページ
+  else if (clickX < leftThird) {
+    prevPage()
+  } 
+  // 右側クリック：次のページ
+  else if (clickX > rightThird) {
+    nextPage()
   }
 }
 
@@ -313,6 +429,11 @@ const prevPage = () => {
   if (currentPage.value > 0) {
     currentPage.value--
     showHeader.value = false
+    
+    // 次のページをプリロード
+    if (currentPage.value > 0) {
+      fetchImage(imagePositions.value[currentPage.value - 1])
+    }
   }
 }
 
@@ -320,6 +441,11 @@ const nextPage = () => {
   if (currentPage.value < imagePositions.value.length - 1) {
     currentPage.value++
     showHeader.value = false
+    
+    // 次のページをプリロード
+    if (currentPage.value < imagePositions.value.length - 1) {
+      fetchImage(imagePositions.value[currentPage.value + 1])
+    }
   }
 }
 
@@ -331,19 +457,28 @@ const toggleMenu = () => {
   showMenu.value = !showMenu.value
 }
 
-const changeMode = (mode: ImagePageMode) => {
+const changeMode = async (mode: ImagePageMode) => {
   viewMode.value = mode
   showMenu.value = false
+  showHeader.value = false
+  isLoading.value = true
   
-  if (mode === ImagePageMode.Scroll) {
-    showHeader.value = true
-    lastScrollY.value = window.scrollY
+  // モードに応じてbodyのスクロールを制御
+  if (mode === ImagePageMode.Page) {
+    document.body.style.overflow = 'hidden'
+    document.body.style.position = 'fixed'
+    document.body.style.width = '100%'
   } else {
-    // ページモードに切り替えた時はヘッダー非表示
-    showHeader.value = false
+    document.body.style.overflow = ''
+    document.body.style.position = ''
+    document.body.style.width = ''
+    lastScrollY.value = window.scrollY
   }
 
   setImagePageMode(mode);
+  
+  // モード切替時に画像を再プリロード
+  await preloadImages()
 }
 
 const router = useRouter()
@@ -359,6 +494,48 @@ const goBack = () => {
 .viewer-page {
   min-height: 100vh;
   background: var(--bg-primary);
+}
+
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--bg-primary);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.loading-spinner.small {
+  width: 32px;
+  height: 32px;
+  border-width: 3px;
+}
+
+.loading-text {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .header {
@@ -608,6 +785,24 @@ const goBack = () => {
   gap: 1rem;
 }
 
+.image-wrapper {
+  position: relative;
+  width: 100%;
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.image-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 200px;
+  background: transparent;
+}
+
 .page-image {
   max-width: 100%;
   max-height: 100vh;
@@ -629,7 +824,8 @@ const goBack = () => {
   justify-content: center;
   cursor: pointer;
   overflow: hidden;
-  touch-action: pan-y pinch-zoom;
+  touch-action: none;
+  overscroll-behavior: contain;
 }
 
 .page-mode.has-header {
