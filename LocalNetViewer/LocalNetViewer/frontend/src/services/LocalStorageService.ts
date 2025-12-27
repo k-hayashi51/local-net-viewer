@@ -1,7 +1,8 @@
-import { ImagePageMode } from "../types";
+import { ImageShowMode } from "../types";
 
 const positionKey = 'position';
-const imagePageModeKey = 'imagePageMode';
+const imageShowModeKey = 'imageShowMode';
+const pdfQualityScaleKey = 'pdfQualityScale';
 
 export const setPosition = (position: string) => {
   setStorage(positionKey, position)
@@ -11,12 +12,20 @@ export const getPosition = (): string => {
   return getStorage(positionKey) ?? '';
 }
 
-export const setImagePageMode = (imagePageMode: ImagePageMode) => {
-  setStorage(imagePageModeKey, imagePageMode)
+export const setImageShowMode = (imageShowMode: ImageShowMode) => {
+  setStorage(imageShowModeKey, imageShowMode)
 }
 
-export const getImagePageMode = (): ImagePageMode => {
-  return getStorage(imagePageModeKey) ?? ImagePageMode.Scroll;
+export const getImageShowMode = (): ImageShowMode => {
+  return getStorage(imageShowModeKey) ?? ImageShowMode.Scroll;
+}
+
+export const setPdfQualityScale = (pdfQualityScale: number) => {
+  setStorage(pdfQualityScaleKey, pdfQualityScale)
+}
+
+export const getPdfQualityScale = (): number => {
+  return getStorage(pdfQualityScaleKey) ?? 1.5;
 }
 
 const setStorage = <T>(key: string, value: T): void => {

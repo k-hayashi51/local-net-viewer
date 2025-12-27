@@ -6,7 +6,7 @@ export enum FileType {
     Other = 4,
 }
 
-export enum ImagePageMode {
+export enum ImageShowMode {
     Scroll = 0,
     Page = 1,
 }

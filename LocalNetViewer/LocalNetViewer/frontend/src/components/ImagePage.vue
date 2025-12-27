@@ -19,7 +19,7 @@
       <h2 class="title">{{ itemName }}</h2>
 
       <!-- ページモード時のみ表示されるページセレクタ -->
-      <div v-if="viewMode === ImagePageMode.Page" class="page-selector-header">
+      <div v-if="viewMode === ImageShowMode.Page" class="page-selector-header">
         <!-- ページ番号を直接選択 -->
         <select v-model.number="currentPage" @change="onPageSelect" class="page-select-header">
           <option v-for="(_, index) in imagePositions" :key="index" :value="index">
@@ -38,7 +38,7 @@
     </header>
 
     <!-- ページモード時のフッター進捗バー -->
-    <div v-if="viewMode === ImagePageMode.Page"
+    <div v-if="viewMode === ImageShowMode.Page"
          class="progress-footer"
          :class="{ 'hidden': !showHeader }">
 
@@ -71,16 +71,16 @@
 
         <!-- 縦スクロールモード -->
         <button
-          @click="changeMode(ImagePageMode.Scroll)"
-          :class="{ 'active': viewMode === ImagePageMode.Scroll }"
+          @click="changeMode(ImageShowMode.Scroll)"
+          :class="{ 'active': viewMode === ImageShowMode.Scroll }"
           class="menu-option">
           📜 縦スクロール
         </button>
 
         <!-- ページ送りモード -->
         <button
-          @click="changeMode(ImagePageMode.Page)"
-          :class="{ 'active': viewMode === ImagePageMode.Page }"
+          @click="changeMode(ImageShowMode.Page)"
+          :class="{ 'active': viewMode === ImageShowMode.Page }"
           class="menu-option">
           📖 ページ送り
         </button>
@@ -91,7 +91,7 @@
     <div class="image-viewer">
       
       <!-- スクロールモード：全画像を縦に並べて表示 -->
-      <div v-if="viewMode === ImagePageMode.Scroll" class="scroll-mode">
+      <div v-if="viewMode === ImageShowMode.Scroll" class="scroll-mode">
         <div
           v-for="(imagePosition, index) in imagePositions"
           :key="index"
@@ -136,20 +136,19 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { FileInfoViewModel, FileType, ImagePageMode } from '../types';
-import { getImagePageMode, setImagePageMode, setPosition } from '../services/LocalStorageService';
+import { FileInfoViewModel, FileType, ImageShowMode } from '../types';
+import { getImageShowMode, setImageShowMode, setPosition } from '../services/LocalStorageService';
 
 const props = defineProps<{
   position: string
 }>()
 
-const viewMode = ref<ImagePageMode>(ImagePageMode.Scroll)
+const viewMode = ref<ImageShowMode>(ImageShowMode.Scroll)
 const currentPage = ref(0)
 const imagePositions = ref<string[]>([])
 const showHeader = ref(false)
 const showMenu = ref(false)
 const lastScrollY = ref(0)
-const scrollThreshold = 50
 
 // タッチイベント用の変数
 const touchStartX = ref(0)
@@ -187,7 +186,7 @@ const onImageLoad = (position: string) => {
 
 const preloadImages = async () => {
   // 初期表示用の画像を先にロード
-  if (viewMode.value === ImagePageMode.Page && imagePositions.value.length > 0) {
+  if (viewMode.value === ImageShowMode.Page && imagePositions.value.length > 0) {
     await fetchImage(imagePositions.value[currentPage.value])
     
     // 前後の画像をプリロード
@@ -197,7 +196,7 @@ const preloadImages = async () => {
     if (currentPage.value < imagePositions.value.length - 1) {
       fetchImage(imagePositions.value[currentPage.value + 1])
     }
-  } else if (viewMode.value === ImagePageMode.Scroll) {
+  } else if (viewMode.value === ImageShowMode.Scroll) {
     // スクロールモードでは最初の数枚をロード
     const initialLoadCount = Math.min(3, imagePositions.value.length)
     for (let i = 0; i < initialLoadCount; i++) {
@@ -216,7 +215,7 @@ const preloadImages = async () => {
 }
 
 onMounted(async () => {
-  viewMode.value = getImagePageMode();
+  viewMode.value = getImageShowMode();
   
   const parentPosition = props.position.split('-').slice(0, -1).join("-")
   const response = await fetch(`/api/files/${parentPosition}/child`)
@@ -233,7 +232,7 @@ onMounted(async () => {
   await preloadImages()
   
   // スクロールモードの場合、該当画像までスクロール
-  if (viewMode.value === ImagePageMode.Scroll && initialIndex !== -1) {
+  if (viewMode.value === ImageShowMode.Scroll && initialIndex !== -1) {
     setTimeout(() => {
       const imageWrappers = document.querySelectorAll('.image-wrapper')
       if (imageWrappers[initialIndex]) {
@@ -246,7 +245,7 @@ onMounted(async () => {
   window.addEventListener('click', handleScreenClick)
   
   // ページモード時はbodyのスクロールを無効化
-  if (viewMode.value === ImagePageMode.Page) {
+  if (viewMode.value === ImageShowMode.Page) {
     document.body.style.overflow = 'hidden'
     document.body.style.position = 'fixed'
     document.body.style.width = '100%'
@@ -371,7 +370,7 @@ const handleProgressTouchEnd = (event: TouchEvent) => {
 }
 
 const handleScroll = () => {
-  if (viewMode.value !== ImagePageMode.Scroll) return
+  if (viewMode.value !== ImageShowMode.Scroll) return
   
   // スクロールされたらヘッダーを非表示
   showHeader.value = false
@@ -379,7 +378,7 @@ const handleScroll = () => {
 }
 
 const handleScreenClick = (event: MouseEvent) => {
-  if (viewMode.value !== ImagePageMode.Scroll) return
+  if (viewMode.value !== ImageShowMode.Scroll) return
   
   // ヘッダーやメニュー内のクリックは無視
   const target = event.target as HTMLElement
@@ -457,14 +456,14 @@ const toggleMenu = () => {
   showMenu.value = !showMenu.value
 }
 
-const changeMode = async (mode: ImagePageMode) => {
+const changeMode = async (mode: ImageShowMode) => {
   viewMode.value = mode
   showMenu.value = false
   showHeader.value = false
   isLoading.value = true
   
   // モードに応じてbodyのスクロールを制御
-  if (mode === ImagePageMode.Page) {
+  if (mode === ImageShowMode.Page) {
     document.body.style.overflow = 'hidden'
     document.body.style.position = 'fixed'
     document.body.style.width = '100%'
@@ -475,7 +474,7 @@ const changeMode = async (mode: ImagePageMode) => {
     lastScrollY.value = window.scrollY
   }
 
-  setImagePageMode(mode);
+  setImageShowMode(mode);
   
   // モード切替時に画像を再プリロード
   await preloadImages()
