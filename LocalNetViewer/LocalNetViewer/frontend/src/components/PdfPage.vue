@@ -73,7 +73,7 @@
     <div class="pdf-viewer">
       <!-- スクロールモード -->
       <div v-if="viewMode === ImageShowMode.Scroll" class="scroll-mode">
-        <div v-for="pageNum in totalPages" :key="pageNum" class="canvas-wrapper">
+        <div v-for="pageNum in totalPages" :key="pageNum" class="canvas-wrapper" :style="{ minHeight: pageHeights[pageNum - 1] ? pageHeights[pageNum - 1] + 'px' : '800px' }">
           <div v-if="!renderedPages[pageNum - 1]" class="page-loading">
             <div class="loading-spinner small"></div>
           </div>
@@ -127,10 +127,16 @@ const minSwipeDistance = 50;
 // PDF画質設定（高いほど高画質だがメモリ使用量が増加）
 const pdfQualityScale = ref(4.0);
 
+// 可視範囲の管理
+const visiblePageRange = ref({ start: 0, end: 5 });
+const pageHeights = ref<number[]>([]);
+
 let pdfDoc: PDFDocumentProxy | null = null;
 const canvasRefs = ref<HTMLCanvasElement[]>([]);
 const currentPageCanvas = ref<HTMLCanvasElement | null>(null);
 const renderedPages = ref<Record<number, boolean>>({});
+const renderingPages = ref<Record<number, boolean>>({}); // レンダリング中のページを追跡
+const renderTasks = ref<Record<number, any>>({}); // レンダリングタスクを保存
 
 const progressPercentage = computed(() => {
   if (totalPages.value === 0) return 0;
@@ -145,6 +151,93 @@ const setCanvasRef = (el: unknown, index: number) => {
 
 const onPageRendered = (pageNum: number) => {
   renderedPages.value[pageNum] = true;
+};
+
+// ページのCanvasをクリアしてメモリ解放
+const clearPage = (pageNum: number) => {
+  // レンダリング中の場合はキャンセル
+  if (renderTasks.value[pageNum]) {
+    try {
+      renderTasks.value[pageNum].cancel();
+    } catch (e) {
+      // キャンセル済みの場合は無視
+    }
+    delete renderTasks.value[pageNum];
+  }
+
+  renderingPages.value[pageNum] = false;
+
+  const canvas = canvasRefs.value[pageNum];
+  if (canvas) {
+    const context = canvas.getContext('2d');
+    if (context) {
+      context.clearRect(0, 0, canvas.width, canvas.height);
+    }
+    canvas.width = 0;
+    canvas.height = 0;
+  }
+  renderedPages.value[pageNum] = false;
+};
+
+// 可視範囲のページを更新
+let updateVisiblePagesTimeout: number | null = null;
+
+const updateVisiblePages = () => {
+  if (viewMode.value !== ImageShowMode.Scroll) return;
+
+  // デバウンス: 連続呼び出しを防ぐ
+  if (updateVisiblePagesTimeout) {
+    clearTimeout(updateVisiblePagesTimeout);
+  }
+
+  updateVisiblePagesTimeout = setTimeout(() => {
+    const scrollY = window.scrollY;
+    const viewportHeight = window.innerHeight;
+
+    // 可視範囲 + 前後2ページのバッファ
+    let startPage = 0;
+    let endPage = 0;
+    let accumulatedHeight = 0;
+
+    for (let i = 0; i < totalPages.value; i++) {
+      const pageHeight = pageHeights.value[i] || viewportHeight;
+
+      if (accumulatedHeight + pageHeight > scrollY - viewportHeight) {
+        startPage = Math.max(0, i - 2);
+        break;
+      }
+      accumulatedHeight += pageHeight;
+    }
+
+    accumulatedHeight = 0;
+    for (let i = 0; i < totalPages.value; i++) {
+      const pageHeight = pageHeights.value[i] || viewportHeight;
+      accumulatedHeight += pageHeight;
+
+      if (accumulatedHeight > scrollY + viewportHeight * 2) {
+        endPage = Math.min(totalPages.value - 1, i + 2);
+        break;
+      }
+    }
+
+    if (endPage === 0) endPage = Math.min(totalPages.value - 1, startPage + 5);
+
+    visiblePageRange.value = { start: startPage, end: endPage };
+
+    // 可視範囲のページのみレンダリング
+    for (let i = startPage; i <= endPage; i++) {
+      if (!renderedPages.value[i] && !renderingPages.value[i]) {
+        renderPage(i);
+      }
+    }
+
+    // 可視範囲外のページをクリア(メモリ解放)
+    for (let i = 0; i < totalPages.value; i++) {
+      if ((i < startPage - 3 || i > endPage + 3) && renderedPages.value[i]) {
+        clearPage(i);
+      }
+    }
+  }, 100) as unknown as number;
 };
 
 onMounted(async () => {
@@ -169,10 +262,34 @@ onUnmounted(() => {
   document.removeEventListener('mousemove', handleProgressMouseMove);
   document.removeEventListener('mouseup', handleProgressMouseUp);
 
+  // タイムアウトをクリア
+  if (updateVisiblePagesTimeout) {
+    clearTimeout(updateVisiblePagesTimeout);
+  }
+
   // bodyのスクロール制限を解除
   document.body.style.overflow = '';
   document.body.style.position = '';
   document.body.style.width = '';
+
+  // 全てのレンダリングタスクをキャンセル
+  Object.keys(renderTasks.value).forEach((key) => {
+    const pageNum = parseInt(key);
+    if (renderTasks.value[pageNum]) {
+      try {
+        renderTasks.value[pageNum].cancel();
+      } catch (e) {
+        // キャンセル済みの場合は無視
+      }
+    }
+  });
+
+  // メモリクリーンアップ
+  for (let i = 0; i < totalPages.value; i++) {
+    if (renderedPages.value[i]) {
+      clearPage(i);
+    }
+  }
 });
 
 const loadPDF = async () => {
@@ -183,18 +300,26 @@ const loadPDF = async () => {
       pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
     }
 
-    const response = await fetch(`/api/files/${props.position}`);
-    const arrayBuffer = await response.arrayBuffer();
+    // Range Requestを使用してPDFを段階的に読み込む
+    const loadingTask = pdfjsLib.getDocument({
+      url: `/api/files/${props.position}`,
+      // Range Requestを有効化（サーバーが対応している場合）
+      rangeChunkSize: 65536, // 64KB単位で取得
+      disableAutoFetch: true, // 自動先読みを無効化（メモリ節約）
+      disableStream: false, // ストリーミングを有効化
+    });
 
-    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
     pdfDoc = await loadingTask.promise;
     totalPages.value = pdfDoc.numPages;
+
+    // ページ高さの初期化
+    pageHeights.value = new Array(totalPages.value).fill(800);
 
     isLoading.value = false;
 
     // 初期表示
     if (viewMode.value === ImageShowMode.Scroll) {
-      setTimeout(() => renderAllPages(), 100);
+      setTimeout(() => updateVisiblePages(), 100);
     } else {
       setTimeout(() => renderPage(currentPage.value), 100);
     }
@@ -207,6 +332,23 @@ const loadPDF = async () => {
 const renderPage = async (pageNum: number) => {
   if (!pdfDoc) return;
 
+  // 既にレンダリング中の場合はスキップ
+  if (renderingPages.value[pageNum]) {
+    return;
+  }
+
+  // レンダリング中のタスクがあればキャンセル
+  if (renderTasks.value[pageNum]) {
+    try {
+      renderTasks.value[pageNum].cancel();
+    } catch (e) {
+      // キャンセル済みの場合は無視
+    }
+    delete renderTasks.value[pageNum];
+  }
+
+  renderingPages.value[pageNum] = true;
+
   try {
     const page = await pdfDoc.getPage(pageNum + 1);
     let canvas: HTMLCanvasElement | null = null;
@@ -217,10 +359,16 @@ const renderPage = async (pageNum: number) => {
       canvas = canvasRefs.value[pageNum] || null;
     }
 
-    if (!canvas) return;
+    if (!canvas) {
+      renderingPages.value[pageNum] = false;
+      return;
+    }
 
     const context = canvas.getContext('2d');
-    if (!context) return;
+    if (!context) {
+      renderingPages.value[pageNum] = false;
+      return;
+    }
 
     // デバイスピクセル比を考慮した高解像度レンダリング
     const devicePixelRatio = window.devicePixelRatio || 1;
@@ -243,8 +391,15 @@ const renderPage = async (pageNum: number) => {
     canvas.height = scaledViewport.height;
 
     // CSS表示サイズ（画面に合わせた通常サイズ）
-    canvas.style.width = `${scaledViewport.width / devicePixelRatio / pdfQualityScale.value}px`;
-    canvas.style.height = `${scaledViewport.height / devicePixelRatio / pdfQualityScale.value}px`;
+    const displayWidth = scaledViewport.width / devicePixelRatio / pdfQualityScale.value;
+    const displayHeight = scaledViewport.height / devicePixelRatio / pdfQualityScale.value;
+    canvas.style.width = `${displayWidth}px`;
+    canvas.style.height = `${displayHeight}px`;
+
+    // ページ高さを記録（スクロールモード用）
+    if (viewMode.value === ImageShowMode.Scroll) {
+      pageHeights.value[pageNum] = displayHeight;
+    }
 
     const renderContext = {
       canvasContext: context,
@@ -252,16 +407,23 @@ const renderPage = async (pageNum: number) => {
       canvas: canvas,
     };
 
-    await page.render(renderContext).promise;
-    onPageRendered(pageNum);
-  } catch (error) {
-    console.error(`ページ${pageNum + 1}のレンダリングエラー:`, error);
-  }
-};
+    // レンダリングタスクを保存
+    const renderTask = page.render(renderContext);
+    renderTasks.value[pageNum] = renderTask;
 
-const renderAllPages = async () => {
-  for (let i = 0; i < totalPages.value; i++) {
-    await renderPage(i);
+    await renderTask.promise;
+
+    // レンダリング完了後にタスクを削除
+    delete renderTasks.value[pageNum];
+    renderingPages.value[pageNum] = false;
+    onPageRendered(pageNum);
+  } catch (error: any) {
+    // キャンセルエラーは無視
+    if (error.name !== 'RenderingCancelledException') {
+      console.error(`ページ${pageNum + 1}のレンダリングエラー:`, error);
+    }
+    delete renderTasks.value[pageNum];
+    renderingPages.value[pageNum] = false;
   }
 };
 
@@ -273,7 +435,7 @@ watch(currentPage, (newPage) => {
 
 watch(viewMode, (newMode) => {
   if (newMode === ImageShowMode.Scroll && !isLoading.value) {
-    setTimeout(() => renderAllPages(), 100);
+    setTimeout(() => updateVisiblePages(), 100);
   } else if (newMode === ImageShowMode.Page && !isLoading.value) {
     setTimeout(() => renderPage(currentPage.value), 100);
   }
@@ -375,6 +537,9 @@ const handleScroll = () => {
   if (viewMode.value !== ImageShowMode.Scroll) return;
   showHeader.value = false;
   lastScrollY.value = window.scrollY;
+
+  // スクロール時に可視ページを更新
+  updateVisiblePages();
 };
 
 const handleScreenClick = (event: MouseEvent) => {
@@ -461,9 +626,16 @@ const changeQuality = async (scale: number) => {
   showMenu.value = false;
   isLoading.value = true;
 
+  // 全ページクリア
+  for (let i = 0; i < totalPages.value; i++) {
+    if (renderedPages.value[i]) {
+      clearPage(i);
+    }
+  }
+
   // 品質変更後に再レンダリング
   if (viewMode.value === ImageShowMode.Scroll) {
-    await renderAllPages();
+    updateVisiblePages();
   } else {
     await renderPage(currentPage.value);
   }
@@ -760,6 +932,28 @@ const goBack = () => {
   margin-bottom: 0;
 }
 
+.menu-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 1rem 0;
+}
+
+.quality-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+}
+
+.quality-label {
+  font-weight: 600;
+}
+
+.quality-desc {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
 .pdf-viewer {
   min-height: 100vh;
 }
@@ -777,7 +971,6 @@ const goBack = () => {
 .canvas-wrapper {
   position: relative;
   width: 100%;
-  min-height: 200px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -803,7 +996,7 @@ const goBack = () => {
   top: 0;
   left: 0;
   width: 100vw;
-  height: 100vh;
+  height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;

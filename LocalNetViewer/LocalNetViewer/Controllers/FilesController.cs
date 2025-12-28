@@ -27,9 +27,8 @@ namespace LocalNetViewer.Controllers
         public IActionResult GetFile(string position)
         {
             var path = PositionManager.GetPathByPosition(position);
-            var stream = System.IO.File.OpenRead(path);
             var fileName = Path.GetFileName(path);
-            return File(stream, "application/octet-stream", fileName);
+            return PhysicalFile(path, "application/octet-stream", fileName, enableRangeProcessing: true);
         }
 
         [HttpGet("{position}/path")]
