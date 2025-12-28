@@ -27,8 +27,8 @@ namespace LocalNetViewer.Controllers
         public IActionResult GetFile(string position)
         {
             var path = PositionManager.GetPathByPosition(position);
-            var fileName = Path.GetFileName(path);
-            return PhysicalFile(path, "application/octet-stream", fileName, enableRangeProcessing: true);
+            var stream = System.IO.File.OpenRead(path);
+            return File(stream, "application/octet-stream");
         }
 
         [HttpGet("{position}/path")]
@@ -42,8 +42,8 @@ namespace LocalNetViewer.Controllers
         public IActionResult GetPdf(string position)
         {
             var path = PositionManager.GetPathByPosition(position);
-            var stream = System.IO.File.OpenRead(path);
-            return File(stream, "application/pdf");
+            var fileName = Path.GetFileName(path);
+            return PhysicalFile(path, "application/pdf", fileName, enableRangeProcessing: true);
         }
 
         [HttpGet("{position}/video")]

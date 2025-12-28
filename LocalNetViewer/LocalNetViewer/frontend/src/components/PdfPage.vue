@@ -3,7 +3,7 @@
     <!-- ローディングオーバーレイ -->
     <div v-if="isLoading" class="loading-overlay">
       <div class="loading-spinner"></div>
-      <p class="loading-text">読み込み中...</p>
+      <p class="loading-text">{{ loadingText }}</p>
     </div>
 
     <!-- ヘッダー -->
@@ -114,6 +114,7 @@ const showHeader = ref(false);
 const showMenu = ref(false);
 const lastScrollY = ref(0);
 const isLoading = ref(true);
+const loadingText = ref('読み込み中...');
 const itemName = ref('');
 const isDraggingProgress = ref(false);
 
@@ -302,13 +303,14 @@ const loadPDF = async () => {
 
     // Range Requestを使用してPDFを段階的に読み込む
     const loadingTask = pdfjsLib.getDocument({
-      url: `/api/files/${props.position}`,
+      url: `/api/files/${props.position}/pdf`,
       // Range Requestを有効化（サーバーが対応している場合）
       rangeChunkSize: 65536, // 64KB単位で取得
       disableAutoFetch: true, // 自動先読みを無効化（メモリ節約）
       disableStream: false, // ストリーミングを有効化
     });
 
+    loadingText.value = 'PDF情報取得中...';
     pdfDoc = await loadingTask.promise;
     totalPages.value = pdfDoc.numPages;
 
