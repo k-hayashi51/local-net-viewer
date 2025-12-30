@@ -565,16 +565,12 @@ const handlePageClick = (event: MouseEvent) => {
   const target = event.currentTarget as HTMLElement;
   const rect = target.getBoundingClientRect();
   const clickX = event.clientX - rect.left;
-  const clickY = event.clientY - rect.top;
   const width = rect.width;
-  const height = rect.height;
 
   const leftThird = width / 3;
   const rightThird = (width * 2) / 3;
-  const topThird = height / 3;
-  const bottomThird = (height * 2) / 3;
 
-  if (clickX > leftThird && clickX < rightThird && clickY > topThird && clickY < bottomThird) {
+  if (clickX > leftThird && clickX < rightThird) {
     showHeader.value = !showHeader.value;
   } else if (clickX < leftThird) {
     prevPage();
