@@ -1,12 +1,18 @@
 <template>
   <div class="item-card" @click="emit('click')">
     <div class="thumbnail" :class="{ 'is-grid': item.fileType !== FileType.Image && item.childImagePositions.length > 0 }">
-      <img v-if="props.item.fileType === FileType.Image" :src="`/api/files/${item.position}/thumbnail`" :alt="item.name" loading="lazy" />
+      <!-- 画像 -->
+      <img v-if="item.fileType === FileType.Image" :src="`/api/files/${item.position}/thumbnail`" :alt="item.name" loading="lazy" />
 
-      <template v-else-if="item.childImagePositions.length !== 0">
+      <!-- PDF -->
+      <object v-else-if="item.fileType === FileType.Pdf" :data="`/api/files/${item.position}/pdf/first#view=FitPage&toolbar=0&navpanes=0`" type="application/pdf" />
+
+      <!-- フォルダ内の画像グリッド -->
+      <template v-else-if="item.childImagePositions.length > 0">
         <img v-for="pos in item.childImagePositions.slice(0, 4)" :key="pos" :src="`/api/files/${pos}/thumbnail`" :alt="item.name" loading="lazy" />
       </template>
 
+      <!-- その他 -->
       <div v-else class="icon-placeholder">
         {{ typeIcon }}
       </div>
@@ -15,6 +21,7 @@
         {{ typeBadge }}
       </div>
     </div>
+
     <div class="content">
       <h3 class="title">{{ item.name }}</h3>
     </div>
@@ -87,12 +94,12 @@ const typeBadge = computed(() => {
   aspect-ratio: 1;
   background: var(--bg-secondary);
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: center; /* 縦中央 */
+  justify-content: center; /* 横中央 */
   overflow: hidden;
 }
 
-/* グリッドレイアウトの設定 */
+/* グリッド表示 */
 .thumbnail.is-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -103,20 +110,20 @@ const typeBadge = computed(() => {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.3s ease;
   display: block;
+  transition: transform 0.3s ease;
 }
 
-/* 通常時（単一画像）のホバー拡大 */
+/* 単一画像のみホバー拡大 */
 .item-card:hover .thumbnail:not(.is-grid) img {
   transform: scale(1.05);
 }
 
-/* グリッド時（is-grid）は拡大させない（transformを初期化） */
 .item-card:hover .thumbnail.is-grid img {
   transform: none;
 }
 
+/* プレースホルダ */
 .icon-placeholder {
   font-size: 4rem;
   opacity: 0.7;
@@ -131,11 +138,9 @@ const typeBadge = computed(() => {
   padding: 0.375rem 0.75rem;
   border-radius: 20px;
   font-size: 0.75rem;
-  color: white;
+  color: #fff;
   font-weight: 600;
-  text-transform: uppercase;
   letter-spacing: 0.5px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   z-index: 1;
 }
 
@@ -151,8 +156,8 @@ const typeBadge = computed(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
-  line-clamp: 2;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   line-height: 1.4;
   min-height: 2.8em;

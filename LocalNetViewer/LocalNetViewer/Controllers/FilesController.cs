@@ -46,6 +46,14 @@ namespace LocalNetViewer.Controllers
             return PhysicalFile(path, "application/pdf", fileName, enableRangeProcessing: true);
         }
 
+        [HttpGet("{position}/pdf/first")]
+        public IActionResult? GetPdfThumbnail(string position)
+        {
+            var path = PositionManager.GetPathByPosition(position);
+            var bytes = ThumbnailGenerator.GeneratePdfThumbnail(path);
+            return File(bytes, "application/pdf");
+        }
+
         [HttpGet("{position}/video")]
         public IActionResult GetVideo(string position)
         {

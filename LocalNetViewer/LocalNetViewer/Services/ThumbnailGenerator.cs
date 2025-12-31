@@ -1,7 +1,10 @@
-﻿using SixLabors.ImageSharp;
+﻿using PdfSharpCore.Pdf;
+using PdfSharpCore.Pdf.IO;
+using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Processing;
 using System.IO;
+using System.Reflection.PortableExecutable;
 
 namespace LocalNetViewer.Services
 {
@@ -22,6 +25,25 @@ namespace LocalNetViewer.Services
 
             // JPEG で保存
             image.Save(ms, new JpegEncoder());
+
+            return ms.ToArray();
+        }
+
+        public static byte[] GeneratePdfThumbnail(string targetPath)
+        {
+            if (!File.Exists(targetPath))
+                throw new FileNotFoundException("PDFファイルが見つかりません。", targetPath);
+
+            using var input = PdfReader.Open(targetPath, PdfDocumentOpenMode.Import);
+
+            if (input.Pages.Count == 0)
+                throw new InvalidOperationException("PDFにページが存在しません。");
+
+            var output = new PdfDocument();
+            output.AddPage(input.Pages[0]);
+
+            using var ms = new MemoryStream();
+            output.Save(ms, false);
 
             return ms.ToArray();
         }
