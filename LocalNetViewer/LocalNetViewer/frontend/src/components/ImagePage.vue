@@ -205,9 +205,7 @@ onMounted(async () => {
 
   // ページモード時はbodyのスクロールを無効化
   if (viewMode.value === ImageShowMode.Page) {
-    document.body.style.overflow = 'hidden';
-    document.body.style.position = 'fixed';
-    document.body.style.width = '100%';
+    lockScroll();
   }
 
   setPosition(parentPosition);
@@ -221,15 +219,40 @@ onUnmounted(() => {
   document.removeEventListener('mouseup', handleProgressMouseUp);
 
   // bodyのスクロール制限を解除
-  document.body.style.overflow = '';
-  document.body.style.position = '';
-  document.body.style.width = '';
+  unlockScroll();
 
   // データURLのクリーンアップ
   Object.values(imageDataUrls.value).forEach((url) => {
     URL.revokeObjectURL(url);
   });
 });
+
+// Safari対応のスクロールロック関数
+const lockScroll = () => {
+  const scrollY = window.scrollY;
+  document.body.style.position = 'fixed';
+  document.body.style.top = `-${scrollY}px`;
+  document.body.style.left = '0';
+  document.body.style.right = '0';
+  document.body.style.width = '100%';
+  document.body.style.overflow = 'hidden';
+  // iOS Safari対応
+  document.documentElement.style.overflow = 'hidden';
+};
+
+const unlockScroll = () => {
+  const scrollY = document.body.style.top;
+  document.body.style.position = '';
+  document.body.style.top = '';
+  document.body.style.left = '';
+  document.body.style.right = '';
+  document.body.style.width = '';
+  document.body.style.overflow = '';
+  document.documentElement.style.overflow = '';
+  if (scrollY) {
+    window.scrollTo(0, parseInt(scrollY || '0') * -1);
+  }
+};
 
 const handleTouchStart = (event: TouchEvent) => {
   touchStartX.value = event.touches[0].clientX;
@@ -239,6 +262,11 @@ const handleTouchStart = (event: TouchEvent) => {
 const handleTouchMove = (event: TouchEvent) => {
   touchEndX.value = event.touches[0].clientX;
   touchEndY.value = event.touches[0].clientY;
+
+  // ページモード時はスクロールを防止
+  if (viewMode.value === ImageShowMode.Page && !isDraggingProgress.value) {
+    event.preventDefault();
+  }
 };
 
 const handleTouchEnd = () => {
@@ -438,13 +466,9 @@ const changeMode = async (mode: ImageShowMode) => {
 
   // モードに応じてbodyのスクロールを制御
   if (mode === ImageShowMode.Page) {
-    document.body.style.overflow = 'hidden';
-    document.body.style.position = 'fixed';
-    document.body.style.width = '100%';
+    lockScroll();
   } else {
-    document.body.style.overflow = '';
-    document.body.style.position = '';
-    document.body.style.width = '';
+    unlockScroll();
     lastScrollY.value = window.scrollY;
   }
 
@@ -524,10 +548,13 @@ const goBack = () => {
   align-items: center;
   gap: 1rem;
   transition: transform 0.3s ease;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
 }
 
 .header.hidden {
   transform: translateY(-100%);
+  -webkit-transform: translateY(-100%);
 }
 
 .progress-footer {
@@ -543,10 +570,13 @@ const goBack = () => {
   flex-direction: column;
   gap: 0.5rem;
   transition: transform 0.3s ease;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
 }
 
 .progress-footer.hidden {
   transform: translateY(100%);
+  -webkit-transform: translateY(100%);
 }
 
 .progress-bar {
@@ -559,12 +589,14 @@ const goBack = () => {
   cursor: pointer;
   padding: 4px 0;
   user-select: none;
+  -webkit-user-select: none;
 }
 
 .progress-fill {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
+  -webkit-transform: translateY(-50%);
   height: 4px;
   background: var(--accent);
   transition: width 0.1s ease;
@@ -576,6 +608,7 @@ const goBack = () => {
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%);
+  -webkit-transform: translate(-50%, -50%);
   width: 16px;
   height: 16px;
   background: var(--accent);
@@ -584,10 +617,12 @@ const goBack = () => {
   transition: left 0.1s ease;
   pointer-events: none;
   cursor: grab;
+  cursor: -webkit-grab;
 }
 
 .progress-thumb:active {
   cursor: grabbing;
+  cursor: -webkit-grabbing;
 }
 
 .progress-text {
@@ -606,6 +641,7 @@ const goBack = () => {
   border: none;
   cursor: pointer;
   color: inherit;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .back-button:hover {
@@ -633,6 +669,7 @@ const goBack = () => {
   justify-content: center;
   transition: all 0.2s;
   flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .hamburger-button:hover {
@@ -671,6 +708,9 @@ const goBack = () => {
   cursor: pointer;
   min-width: 60px;
   text-align: center;
+  -webkit-appearance: none;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .page-select-header:hover {
@@ -728,6 +768,7 @@ const goBack = () => {
   transition: all 0.2s;
   text-align: left;
   color: inherit;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .menu-option:hover {
@@ -746,6 +787,7 @@ const goBack = () => {
 
 .image-viewer {
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .scroll-mode {
@@ -779,6 +821,7 @@ const goBack = () => {
 .page-image {
   max-width: 100%;
   max-height: 100vh;
+  max-height: 100dvh;
   width: auto;
   height: auto;
   margin-bottom: 1rem;
@@ -791,14 +834,17 @@ const goBack = () => {
   top: 0;
   left: 0;
   width: 100vw;
-  height: 100dvh; /* 動的なビューポート高さを使用 */
+  width: 100dvw;
+  height: 100vh;
+  height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   overflow: hidden;
-  touch-action: none;
+  touch-action: pan-y pinch-zoom;
   overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .page-mode.has-header {
@@ -822,7 +868,9 @@ const goBack = () => {
   height: auto;
   pointer-events: none;
   user-select: none;
+  -webkit-user-select: none;
   object-fit: contain;
+  -webkit-touch-callout: none;
 }
 
 @media (max-width: 768px) {
@@ -859,6 +907,17 @@ const goBack = () => {
 
   .page-total {
     font-size: 0.875rem;
+  }
+}
+
+/* Safari特有のスタイル調整 */
+@supports (-webkit-touch-callout: none) {
+  .page-mode {
+    height: -webkit-fill-available;
+  }
+
+  .image-viewer {
+    min-height: -webkit-fill-available;
   }
 }
 </style>
