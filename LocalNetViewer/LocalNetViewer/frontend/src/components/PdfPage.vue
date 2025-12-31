@@ -248,6 +248,7 @@ onMounted(async () => {
   await loadPDF();
   window.addEventListener('scroll', handleScroll);
   window.addEventListener('click', handleScreenClick);
+  window.addEventListener('keydown', handleKeyDown);
 
   // ページモード時はbodyのスクロールを無効化
   if (viewMode.value === ImageShowMode.Page) {
@@ -260,6 +261,7 @@ onMounted(async () => {
 onUnmounted(() => {
   window.removeEventListener('scroll', handleScroll);
   window.removeEventListener('click', handleScreenClick);
+  window.removeEventListener('keydown', handleKeyDown);
   document.removeEventListener('mousemove', handleProgressMouseMove);
   document.removeEventListener('mouseup', handleProgressMouseUp);
 
@@ -558,6 +560,25 @@ const handleScreenClick = (event: MouseEvent) => {
 
   if (clickY > centerThreshold && clickY < screenHeight - centerThreshold) {
     showHeader.value = !showHeader.value;
+  }
+};
+
+const handleKeyDown = (event: KeyboardEvent) => {
+  // ページモードでのみキーボード操作を有効化
+  if (viewMode.value !== ImageShowMode.Page) return;
+
+  // input要素などでフォーカスされている場合は無視
+  const activeElement = document.activeElement as HTMLElement;
+  if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'SELECT' || activeElement.tagName === 'TEXTAREA')) {
+    return;
+  }
+
+  if (event.key === 'ArrowLeft') {
+    event.preventDefault();
+    prevPage();
+  } else if (event.key === 'ArrowRight') {
+    event.preventDefault();
+    nextPage();
   }
 };
 
