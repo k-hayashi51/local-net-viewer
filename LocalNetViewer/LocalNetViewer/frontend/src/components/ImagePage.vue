@@ -92,7 +92,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, computed } from 'vue';
+import { onMounted, onUnmounted, ref, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { FileInfoViewModel, FileType, ImageShowMode } from '../types';
 import { getImageShowMode, setImageShowMode, setPosition } from '../services/LocalStorageService';
@@ -171,6 +171,30 @@ const preloadImages = async () => {
 
   isLoading.value = false;
 };
+
+// currentPageの変更を監視してページモード時に画像をロード
+watch(currentPage, (newPage) => {
+  if (viewMode.value === ImageShowMode.Page && imagePositions.value.length > 0) {
+    const selectedPosition = imagePositions.value[newPage];
+    if (!loadedImages.value[selectedPosition]) {
+      fetchImage(selectedPosition);
+    }
+
+    // 前後のページもプリロード
+    if (newPage > 0) {
+      const prevPosition = imagePositions.value[newPage - 1];
+      if (!loadedImages.value[prevPosition]) {
+        fetchImage(prevPosition);
+      }
+    }
+    if (newPage < imagePositions.value.length - 1) {
+      const nextPosition = imagePositions.value[newPage + 1];
+      if (!loadedImages.value[nextPosition]) {
+        fetchImage(nextPosition);
+      }
+    }
+  }
+});
 
 onMounted(async () => {
   viewMode.value = getImageShowMode();
