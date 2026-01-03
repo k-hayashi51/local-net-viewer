@@ -28,9 +28,61 @@
       <div class="spinner"></div>
     </div>
 
-    <div class="grid-container" v-else>
-      <ItemCard v-for="item in files" :key="item.position" :item="item" @click="handleItemClick(item)" />
-    </div>
+    <template v-else>
+      <!-- Pagination Controls (Top) -->
+      <div class="pagination pagination-top" v-if="totalPages > 1">
+        <button @click="goToPage(1)" :disabled="currentPage === 1" class="page-button">≪</button>
+        <button @click="goToPage(currentPage - 1)" :disabled="currentPage === 1" class="page-button">‹</button>
+
+        <template v-for="page in displayPages" :key="page">
+          <span v-if="page === '...'" class="page-ellipsis">...</span>
+          <button v-else @click="goToPage(page as number)" class="page-button" :class="{ active: currentPage === page }">
+            {{ page }}
+          </button>
+        </template>
+
+        <button @click="goToPage(currentPage + 1)" :disabled="currentPage === totalPages" class="page-button">›</button>
+        <button @click="goToPage(totalPages)" :disabled="currentPage === totalPages" class="page-button">≫</button>
+
+        <select v-model.number="itemsPerPage" @change="changeItemsPerPage" class="items-per-page">
+          <option :value="12">12件</option>
+          <option :value="24">24件</option>
+          <option :value="48">48件</option>
+          <option :value="96">96件</option>
+        </select>
+
+        <span class="page-info"> {{ (currentPage - 1) * itemsPerPage + 1 }}-{{ Math.min(currentPage * itemsPerPage, files.length) }} / {{ files.length }}件 </span>
+      </div>
+
+      <div class="grid-container">
+        <ItemCard v-for="item in paginatedFiles" :key="item.position" :item="item" @click="handleItemClick(item)" />
+      </div>
+
+      <!-- Pagination Controls (Bottom) -->
+      <div class="pagination pagination-bottom" v-if="totalPages > 1">
+        <button @click="goToPage(1)" :disabled="currentPage === 1" class="page-button">≪</button>
+        <button @click="goToPage(currentPage - 1)" :disabled="currentPage === 1" class="page-button">‹</button>
+
+        <template v-for="page in displayPages" :key="page">
+          <span v-if="page === '...'" class="page-ellipsis">...</span>
+          <button v-else @click="goToPage(page as number)" class="page-button" :class="{ active: currentPage === page }">
+            {{ page }}
+          </button>
+        </template>
+
+        <button @click="goToPage(currentPage + 1)" :disabled="currentPage === totalPages" class="page-button">›</button>
+        <button @click="goToPage(totalPages)" :disabled="currentPage === totalPages" class="page-button">≫</button>
+
+        <select v-model.number="itemsPerPage" @change="changeItemsPerPage" class="items-per-page">
+          <option :value="12">12件</option>
+          <option :value="24">24件</option>
+          <option :value="48">48件</option>
+          <option :value="96">96件</option>
+        </select>
+
+        <span class="page-info"> {{ (currentPage - 1) * itemsPerPage + 1 }}-{{ Math.min(currentPage * itemsPerPage, files.length) }} / {{ files.length }}件 </span>
+      </div>
+    </template>
 
     <div class="empty" v-if="!loading && files.length === 0">
       <p>📂 フォルダを選択してください</p>
@@ -39,7 +91,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
+import { onMounted, ref, watch, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import ItemCard from './ItemCard.vue';
 import { Disclosure, DisclosureButton, DisclosurePanel } from '@headlessui/vue';
@@ -54,6 +106,8 @@ interface Breadcrumb {
 
 const props = defineProps<{
   position?: string;
+  page?: string;
+  perPage?: string;
 }>();
 
 const router = useRouter();
@@ -62,47 +116,129 @@ const loading = ref(false);
 const url = ref('');
 const breadcrumbs = ref<Breadcrumb[]>([]);
 
+// URLパラメータからページング情報を取得（存在しない場合はデフォルト値）
+const currentPage = computed(() => {
+  if (!props.page) return 1;
+  const page = parseInt(props.page);
+  return page > 0 ? page : 1;
+});
+
+const itemsPerPage = ref(24);
+
+// propsからperPageを初期化
+if (props.perPage) {
+  const perPage = parseInt(props.perPage);
+  if (perPage > 0) {
+    itemsPerPage.value = perPage;
+  }
+}
+
+// ページネーション計算
+const totalPages = computed(() => Math.ceil(files.value.length / itemsPerPage.value));
+
+const paginatedFiles = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage.value;
+  const end = start + itemsPerPage.value;
+  return files.value.slice(start, end);
+});
+
+const displayPages = computed(() => {
+  const pages: (number | string)[] = [];
+  const total = totalPages.value;
+  const current = currentPage.value;
+
+  if (total <= 7) {
+    for (let i = 1; i <= total; i++) {
+      pages.push(i);
+    }
+  } else {
+    if (current <= 3) {
+      for (let i = 1; i <= 4; i++) pages.push(i);
+      pages.push('...');
+      pages.push(total);
+    } else if (current >= total - 2) {
+      pages.push(1);
+      pages.push('...');
+      for (let i = total - 3; i <= total; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      pages.push('...');
+      for (let i = current - 1; i <= current + 1; i++) pages.push(i);
+      pages.push('...');
+      pages.push(total);
+    }
+  }
+
+  return pages;
+});
+
+const goToPage = (page: number) => {
+  if (page >= 1 && page <= totalPages.value) {
+    const query: Record<string, string> = {
+      page: page.toString(),
+      perPage: itemsPerPage.value.toString(),
+    };
+
+    if (props.position) {
+      router.push({ path: `/${props.position}`, query });
+    } else {
+      router.push({ path: '/', query });
+    }
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+};
+
+const changeItemsPerPage = () => {
+  goToPage(1);
+};
+
+// propsの変更を監視してitemsPerPageを更新
+watch(
+  () => props.perPage,
+  (newPerPage) => {
+    if (newPerPage) {
+      const perPage = parseInt(newPerPage);
+      if (perPage > 0) {
+        itemsPerPage.value = perPage;
+      }
+    }
+  },
+);
+
 onMounted(async () => {
-  // 接続用URLを取得する。
   url.value = await (await fetch(`/api/network/url`)).text();
-  // 表示ファイルを更新する。
   await updateFilesAsync();
 });
 
 watch(
   () => props.position,
-  async () => await updateFilesAsync(),
+  async () => {
+    await updateFilesAsync();
+  },
 );
 
-/**
- * 表示ファイルを更新する。
- */
 const updateFilesAsync = async () => {
-  // URLに指定のディレクトリ位置が存在する場合、ファイルリストを取得する。
   if (props.position) {
     let response = new Response();
     try {
-      // 指定したディレクトリ位置に表示されている子ディレクトリ情報を取得する。
       response = await fetch(`/api/files/${props.position}/child`);
     } catch {
-      // 子ディレクトリ情報の取得に失敗した場合、トップに戻す。
       navigateToAsync('');
       return;
     }
     files.value = await response.json();
-    await updateBreadcrumbs(props.position); // パンくずリストを更新する。
-    setPosition(props.position); // ローカルセッションに使用したディレクトリ位置を記憶する。
+    await updateBreadcrumbs(props.position);
+    setPosition(props.position);
     return;
   }
 
-  // URLに指定のディレクトリ位置が存在しない場合、ローカルセッションに登録されているディレクトリ位置を表示させる。
   const position = getPosition();
   if (position) {
     navigateToAsync(position);
     return;
   }
 
-  // URLにもローカルセッションにもディレクトリ位置がない場合、トップに戻す。
   const response = await fetch(`/api/files`);
   files.value = await response.json();
   breadcrumbs.value = [];
@@ -255,6 +391,91 @@ h1 {
   gap: 1.5rem;
 }
 
+.pagination {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 1.5rem;
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.pagination-top {
+  margin-bottom: 2rem;
+}
+
+.pagination-bottom {
+  margin-top: 3rem;
+}
+
+.page-button {
+  min-width: 40px;
+  height: 40px;
+  padding: 0 0.75rem;
+  background: var(--bg-card);
+  border: 2px solid transparent;
+  border-radius: 8px;
+  font-weight: 500;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.page-button:hover:not(:disabled):not(.active) {
+  background: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.page-button.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  font-weight: 700;
+  cursor: default;
+}
+
+.page-button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.page-ellipsis {
+  padding: 0 0.5rem;
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+
+.items-per-page {
+  margin-left: 1rem;
+  padding: 0.5rem 1rem;
+  background: var(--bg-card);
+  border: 2px solid var(--bg-card);
+  border-radius: 8px;
+  font-weight: 500;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.items-per-page:hover {
+  border-color: var(--accent);
+}
+
+.page-info {
+  margin-left: 1rem;
+  padding: 0.5rem 1rem;
+  background: var(--bg-card);
+  border-radius: 8px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
 .empty {
   text-align: center;
   padding: 4rem 2rem;
@@ -296,6 +517,30 @@ h1 {
   .grid-container {
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
     gap: 1rem;
+  }
+
+  .pagination {
+    padding: 1rem;
+    gap: 0.25rem;
+  }
+
+  .page-button {
+    min-width: 36px;
+    height: 36px;
+    padding: 0 0.5rem;
+    font-size: 0.875rem;
+  }
+
+  .items-per-page {
+    font-size: 0.875rem;
+    padding: 0.375rem 0.75rem;
+  }
+
+  .page-info {
+    width: 100%;
+    text-align: center;
+    margin: 0.5rem 0 0 0;
+    font-size: 0.875rem;
   }
 }
 

@@ -10,8 +10,23 @@ import './style.css';
 const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: '/', component: ListView },
-    { path: '/:position', component: ListView, props: true },
+    {
+      path: '/',
+      component: ListView,
+      props: (route) => ({
+        page: route.query.page as string | undefined,
+        perPage: route.query.perPage as string | undefined,
+      }),
+    },
+    {
+      path: '/:position+',
+      component: ListView,
+      props: (route) => ({
+        position: Array.isArray(route.params.position) ? route.params.position.join('-') : route.params.position,
+        page: route.query.page as string | undefined,
+        perPage: route.query.perPage as string | undefined,
+      }),
+    },
     { path: '/image/:position', component: ImagePage, props: true },
     { path: '/pdf/:position', component: PdfPage, props: true },
     { path: '/video/:position', component: VideoPage, props: true },
